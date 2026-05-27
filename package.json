@@ -22,7 +22,7 @@
     "typescript": "^5.7.0"
   },
   "dependencies": {
-    "@visualisation-sub/mural": "^0.1.0",
+    "@visualisation-sub/mural": "^0.1.1",
     "yaml": "^2.9.0"
   }
 }
