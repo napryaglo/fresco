@@ -1,4 +1,4 @@
-import type { Point } from 'mural/runtime';
+import type { Point } from '@pragmatic-lab/mural/runtime';
 import type { Graph } from '../graph.js';
 
 // A Layout converts graph topology into per-node 2D positions.

@@ -1,4 +1,4 @@
-import { Point } from 'mural/runtime';
+import { Point } from '@pragmatic-lab/mural/runtime';
 import type { Edge } from '../graph.js';
 import type { AcademicReference } from '../pipeline-element.js';
 import type { EdgePorts } from '../port-assigner/index.js';

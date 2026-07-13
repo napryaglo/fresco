@@ -2,13 +2,13 @@ import { writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { Color } from 'mural/runtime';
+import { Color } from '@pragmatic-lab/mural/runtime';
 import {
     HeadlessTarget,
     SolidColorBrush,
     SvgDrawingContext,
-} from 'mural/visual-engine';
-import { Canvas, TextBlock } from 'mural/Controls';
+} from '@pragmatic-lab/mural/visual-engine';
+import { Canvas, TextBlock } from '@pragmatic-lab/mural/Controls';
 import {
     BuildPipeline,
     BuildScene,
