@@ -5,17 +5,15 @@ import { MetaData, Model } from '@pragmatic-lab/mural/runtime';
 // notifications, attached properties from transforms, etc. — without
 // any layout / render machinery (that's Visual's job).
 //
-// Properties are registered in static blocks the same way Visual's are
-// (see runtime/visual.ts); accessors below are thin wrappers over
-// get_property_value / set_property_value so external code can read and
-// write fields naturally.
+// Properties are registered as static PropertyKey fields the same way
+// Visual's are (see runtime/visual.ts); accessors below are thin wrappers
+// over get_property_value / set_property_value (keyed by those fields) so
+// external code can read and write fields naturally.
 
 export class Node extends Model
 {
-    static {
-        Model.RegisterProperty(Node, 'Id',    '',        MetaData.None);
-        Model.RegisterProperty(Node, 'Label', undefined, MetaData.None);
-    }
+    static IdKey    = Model.RegisterProperty<string>(Node, 'Id', '', MetaData.None);
+    static LabelKey = Model.RegisterProperty<string | undefined>(Node, 'Label', undefined, MetaData.None);
 
     constructor(id: string, label?: string)
     {
@@ -24,19 +22,17 @@ export class Node extends Model
         if (label !== undefined) this.Label = label;
     }
 
-    public get Id(): string { return this.get_property_value('Id'); }
-    public set Id(value: string) { this.set_property_value('Id', value); }
+    public get Id(): string { return this.get_property_value(Node.IdKey); }
+    public set Id(value: string) { this.set_property_value(Node.IdKey, value); }
 
-    public get Label(): string | undefined { return this.get_property_value('Label'); }
-    public set Label(value: string | undefined) { this.set_property_value('Label', value); }
+    public get Label(): string | undefined { return this.get_property_value(Node.LabelKey); }
+    public set Label(value: string | undefined) { this.set_property_value(Node.LabelKey, value); }
 }
 
 export class Edge extends Model
 {
-    static {
-        Model.RegisterProperty(Edge, 'From', '', MetaData.None);
-        Model.RegisterProperty(Edge, 'To',   '', MetaData.None);
-    }
+    static FromKey = Model.RegisterProperty<string>(Edge, 'From', '', MetaData.None);
+    static ToKey   = Model.RegisterProperty<string>(Edge, 'To', '', MetaData.None);
 
     constructor(from: string, to: string)
     {
@@ -45,11 +41,11 @@ export class Edge extends Model
         this.To = to;
     }
 
-    public get From(): string { return this.get_property_value('From'); }
-    public set From(value: string) { this.set_property_value('From', value); }
+    public get From(): string { return this.get_property_value(Edge.FromKey); }
+    public set From(value: string) { this.set_property_value(Edge.FromKey, value); }
 
-    public get To(): string { return this.get_property_value('To'); }
-    public set To(value: string) { this.set_property_value('To', value); }
+    public get To(): string { return this.get_property_value(Edge.ToKey); }
+    public set To(value: string) { this.set_property_value(Edge.ToKey, value); }
 }
 
 // Mutable graph — typical experiment flow is "build the graph, run a

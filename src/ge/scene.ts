@@ -18,7 +18,7 @@ import {
     Pen,
     SolidColorBrush,
 } from '@pragmatic-lab/mural/visual-engine';
-import { Canvas } from '@pragmatic-lab/mural/Controls';
+import { Canvas } from '@pragmatic-lab/mural/basic';
 import type { Edge, Graph } from './graph.js';
 
 // One filled circle, optionally with a centered text label. Sized to

@@ -8,7 +8,7 @@ import {
     SolidColorBrush,
     SvgDrawingContext,
 } from '@pragmatic-lab/mural/visual-engine';
-import { Canvas, TextBlock } from '@pragmatic-lab/mural/Controls';
+import { Canvas, TextBlock } from '@pragmatic-lab/mural/basic';
 import {
     BuildPipeline,
     BuildScene,
