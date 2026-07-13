@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import { parse as parseYaml } from 'yaml';
 
 import { elementRepository } from './pipeline-elements-data.js';
+import { buildNodePredicate, buildEdgePredicate, type TransformParams } from './transform-params.js';
 
 import {
     AdjacentCrossingCounter,
@@ -61,14 +62,21 @@ import {
 //                          stages: improver, layerImprover,
 //                          verticalAligner, edgeRouter, portAssigner)
 //
-// Transforms with constructor arguments (FilterNodesTransform,
-// FilterEdgesTransform, MapLabelsTransform) are NOT representable
-// here — extend the schema with an `options` object when needed.
+// A parameterized transform entry: a class name plus declarative params
+// (see transform-params.ts). Currently FilterNodesTransform and
+// FilterEdgesTransform are parameterizable this way. Plain no-arg
+// transforms are referenced by their class-name string.
+export interface TransformSpec
+{
+    className: string;
+    params?:   TransformParams;
+}
+
 export interface PipelineConfiguration
 {
     name:         string;
     description?: string;
-    transforms:   string[];
+    transforms:   (string | TransformSpec)[];
     layout: {
         layerAssigner?:     string;
         firstLayerNodes?:   string[];
@@ -382,6 +390,38 @@ export function GetConfiguration(filePath: string, name: string): PipelineConfig
     return match;
 }
 
+// Resolves one transform entry: a plain class-name string (no-arg
+// transform) or a TransformSpec carrying declarative params for a
+// parameterized filter transform. Every referenced class must be
+// declared in the YAML/data repo, same as the layout strategies.
+function buildTransform(entry: string | TransformSpec, repo: PipelineElementRepository): IGraphTransform
+{
+    if (typeof entry === 'string')
+    {
+        const t = pick(TRANSFORMS, repo, 'graph-transforms', entry);
+        if (t === undefined) throw new Error(`graph-transforms entry "${entry}" could not be resolved`);
+        return t;
+    }
+
+    const stage = repo['graph-transforms'] ?? {};
+    if (!(entry.className in stage))
+    {
+        throw new Error(`Configuration references graph-transforms.${entry.className}, which is not declared in the repo.`);
+    }
+
+    if (entry.params !== undefined)
+    {
+        if (entry.className === 'FilterNodesTransform') return new FilterNodesTransform(buildNodePredicate(entry.params));
+        if (entry.className === 'FilterEdgesTransform') return new FilterEdgesTransform(buildEdgePredicate(entry.params));
+        throw new Error(`Transform "${entry.className}" does not accept declarative params.`);
+    }
+
+    // A spec without params must name a no-arg transform.
+    const t = pick(TRANSFORMS, repo, 'graph-transforms', entry.className);
+    if (t === undefined) throw new Error(`graph-transforms entry "${entry.className}" could not be resolved`);
+    return t;
+}
+
 export function BuildPipeline(
     config: PipelineConfiguration,
     repo:   PipelineElementRepository,
@@ -391,14 +431,9 @@ export function BuildPipeline(
 }
 {
     const graphPipeline = new GraphPipeline();
-    for (const name of config.transforms)
+    for (const entry of config.transforms)
     {
-        const transform = pick(TRANSFORMS, repo, 'graph-transforms', name);
-        if (transform === undefined)
-        {
-            throw new Error(`graph-transforms entry "${name}" could not be resolved`);
-        }
-        graphPipeline.Add(transform);
+        graphPipeline.Add(buildTransform(entry, repo));
     }
 
     const L = config.layout;

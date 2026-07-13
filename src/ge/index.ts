@@ -30,6 +30,7 @@ export {
 export {
     type PipelineConfiguration,
     type PipelineElementRepository,
+    type TransformSpec,
     LoadConfigurationFile,
     LoadElementRepository,
     ListStrategyNames,
@@ -37,6 +38,7 @@ export {
     GetConfiguration,
     BuildPipeline,
 } from './configuration-loader.js';
+export { type TransformParams } from './transform-params.js';
 export {
     type CatalogParam,
     type CatalogStrategy,
