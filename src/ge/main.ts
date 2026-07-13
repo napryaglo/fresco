@@ -12,11 +12,11 @@ import { Canvas, TextBlock } from '@pragmatic-lab/mural/basic';
 import {
     BuildPipeline,
     BuildScene,
-    GetConfiguration,
     Graph,
     LoadElementRepository,
     ValidateRepositoryAgainstClasses,
 } from './index.js';
+import { GetConfiguration } from './configuration-loader-node.js';
 
 // `ge` — graph visualization experiment harness. Builds a small
 // graph, runs it through a pipeline declared in
@@ -107,7 +107,7 @@ g.AddEdge('microsoft-agent-framework', 'workflow-engine');
 // Pipeline assembly from a named configuration.
 // ------------------------------------------------------------------
 const here = dirname(fileURLToPath(import.meta.url));
-const repo = LoadElementRepository(resolve(here, 'pipeline-elements.yaml'));
+const repo = LoadElementRepository();
 ValidateRepositoryAgainstClasses(repo);
 
 const configName = process.argv[3] ?? 'default';

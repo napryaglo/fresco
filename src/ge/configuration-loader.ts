@@ -1,7 +1,3 @@
-import { readFileSync } from 'node:fs';
-
-import { parse as parseYaml } from 'yaml';
-
 import { elementRepository } from './pipeline-elements-data.js';
 import { buildNodePredicate, buildEdgePredicate, type TransformParams } from './transform-params.js';
 
@@ -90,11 +86,6 @@ export interface PipelineConfiguration
         portAssigner?:      string | null;
         edgeRouter?:        string | null;
     };
-}
-
-interface ConfigurationFile
-{
-    configurations: PipelineConfiguration[];
 }
 
 // ------------------------------------------------------------------
@@ -232,18 +223,13 @@ interface YamlElement
 
 export type PipelineElementRepository = Record<string /* stage */, Record<string /* className */, YamlElement>>;
 
-export function LoadElementRepository(filePath?: string): PipelineElementRepository
+// Returns the statically-imported, browser-safe metadata module. This is
+// the only element-repository source used at runtime (renderer + catalog +
+// BuildPipeline); reading the yaml from fs lives in configuration-loader-node.ts
+// so this module stays free of node:fs and safe to import in the browser.
+export function LoadElementRepository(): PipelineElementRepository
 {
-    // No path → the statically-imported, browser-safe metadata module.
-    // This is the path Plexus (renderer) and the catalog use; there is
-    // no fs available there.
-    if (filePath === undefined)
-    {
-        return elementRepository;
-    }
-    const text = readFileSync(filePath, 'utf8');
-    const parsed = parseYaml(text) as PipelineElementRepository;
-    return parsed;
+    return elementRepository;
 }
 
 // Cross-checks the repo entries against the class-side metadata.
@@ -370,25 +356,6 @@ function pickOptional<T extends IPipelineElement>(
 // ------------------------------------------------------------------
 // Public API.
 // ------------------------------------------------------------------
-export function LoadConfigurationFile(filePath: string): PipelineConfiguration[]
-{
-    const text = readFileSync(filePath, 'utf8');
-    const parsed = JSON.parse(text) as ConfigurationFile;
-    return parsed.configurations;
-}
-
-export function GetConfiguration(filePath: string, name: string): PipelineConfiguration
-{
-    const all = LoadConfigurationFile(filePath);
-    const match = all.find(c => c.name === name);
-    if (match === undefined)
-    {
-        throw new Error(
-            `Configuration "${name}" not found in ${filePath}. Available: ${all.map(c => c.name).join(', ')}`,
-        );
-    }
-    return match;
-}
 
 // Resolves one transform entry: a plain class-name string (no-arg
 // transform) or a TransformSpec carrying declarative params for a

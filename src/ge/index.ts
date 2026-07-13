@@ -31,13 +31,15 @@ export {
     type PipelineConfiguration,
     type PipelineElementRepository,
     type TransformSpec,
-    LoadConfigurationFile,
     LoadElementRepository,
     ListStrategyNames,
     ValidateRepositoryAgainstClasses,
-    GetConfiguration,
     BuildPipeline,
 } from './configuration-loader.js';
+// Note: LoadConfigurationFile / GetConfiguration / LoadElementRepositoryFromFile
+// live in configuration-loader-node.ts (they use node:fs) and are intentionally
+// NOT re-exported here — importing this barrel must stay browser-safe. Node/CLI
+// callers import them from './configuration-loader-node.js' directly.
 export { type TransformParams } from './transform-params.js';
 export {
     type CatalogParam,
