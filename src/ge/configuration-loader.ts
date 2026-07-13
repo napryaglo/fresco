@@ -1,5 +1,6 @@
 import { elementRepository } from './pipeline-elements-data.js';
 import { buildNodePredicate, buildEdgePredicate, type TransformParams } from './transform-params.js';
+import { STRATEGY_PARAMS } from './strategy-params.js';
 
 import {
     AdjacentCrossingCounter,
@@ -68,23 +69,33 @@ export interface TransformSpec
     params?:   TransformParams;
 }
 
+// A layout stage entry: a plain class-name string (no-arg construction) OR a
+// spec carrying declarative numeric/boolean params (see strategy-params.ts).
+export interface LayoutStageSpec
+{
+    className: string;
+    params?:   Record<string, number | boolean>;
+}
+
+export type StageValue = string | LayoutStageSpec;
+
 export interface PipelineConfiguration
 {
     name:         string;
     description?: string;
     transforms:   (string | TransformSpec)[];
     layout: {
-        layerAssigner?:     string;
+        layerAssigner?:     StageValue;
         firstLayerNodes?:   string[];
-        firstLayerOrderer?: string;
-        layerImprover?:     string | null;
-        dummyInserter?:     string;
-        reorderer?:         string;
-        improver?:          string | null;
-        positionComputer?:  string;
-        verticalAligner?:   string | null;
-        portAssigner?:      string | null;
-        edgeRouter?:        string | null;
+        firstLayerOrderer?: StageValue;
+        layerImprover?:     StageValue | null;
+        dummyInserter?:     StageValue;
+        reorderer?:         StageValue;
+        improver?:          StageValue | null;
+        positionComputer?:  StageValue;
+        verticalAligner?:   StageValue | null;
+        portAssigner?:      StageValue | null;
+        edgeRouter?:        StageValue | null;
     };
 }
 
@@ -342,15 +353,34 @@ function pick<T extends IPipelineElement>(
     return factory();
 }
 
-function pickOptional<T extends IPipelineElement>(
+// Resolves one layout stage value: null/undefined → use LayoutPipeline's
+// default; a class-name string → no-arg construction; a LayoutStageSpec with
+// params → parameterized construction via strategy-params.ts. Every referenced
+// class must be declared in the repo.
+function resolveStage<T extends IPipelineElement>(
     registry: Record<string, () => T>,
     repo:     PipelineElementRepository,
     stage:    string,
-    name:     string | null | undefined,
+    value:    StageValue | null | undefined,
 ): T | undefined
 {
-    if (name === null) return undefined;
-    return pick(registry, repo, stage, name);
+    if (value === null || value === undefined) return undefined;
+    const className = typeof value === 'string' ? value : value.className;
+    if (!(stage in repo) || !(className in (repo[stage] ?? {})))
+    {
+        throw new Error(`Configuration references ${stage}.${className}, which is not declared in the repo.`);
+    }
+    if (typeof value !== 'string' && value.params !== undefined)
+    {
+        const def = STRATEGY_PARAMS[className];
+        if (def !== undefined) return def.build(value.params) as T;
+    }
+    const factory = registry[className];
+    if (factory === undefined)
+    {
+        throw new Error(`Unknown ${stage} strategy "${className}". Registered: ${Object.keys(registry).join(', ')}`);
+    }
+    return factory();
 }
 
 // ------------------------------------------------------------------
@@ -405,20 +435,20 @@ export function BuildPipeline(
 
     const L = config.layout;
     const layoutPipeline = new LayoutPipeline(
-        pick(REORDERERS,             repo, 'reorderer',           L.reorderer),
-        pickOptional(IMPROVERS,      repo, 'improver',            L.improver),
-        pick(FIRST_LAYER_ORDERERS,   repo, 'first-layer-orderer', L.firstLayerOrderer),
+        resolveStage(REORDERERS,             repo, 'reorderer',           L.reorderer),
+        resolveStage(IMPROVERS,              repo, 'improver',            L.improver),
+        resolveStage(FIRST_LAYER_ORDERERS,   repo, 'first-layer-orderer', L.firstLayerOrderer),
         L.firstLayerNodes !== undefined ? new Set(L.firstLayerNodes) : undefined,
-        pickOptional(LAYER_IMPROVERS,repo, 'layer-improver',      L.layerImprover),
-        pick(LAYER_ASSIGNERS,        repo, 'layer-assigner',      L.layerAssigner),
-        pick(DUMMY_INSERTERS,        repo, 'dummy-inserter',      L.dummyInserter),
-        pick(POSITION_COMPUTERS,     repo, 'position-computer',   L.positionComputer),
+        resolveStage(LAYER_IMPROVERS,        repo, 'layer-improver',      L.layerImprover),
+        resolveStage(LAYER_ASSIGNERS,        repo, 'layer-assigner',      L.layerAssigner),
+        resolveStage(DUMMY_INSERTERS,        repo, 'dummy-inserter',      L.dummyInserter),
+        resolveStage(POSITION_COMPUTERS,     repo, 'position-computer',   L.positionComputer),
         undefined,  // geometricCounter — keep default
         undefined,  // adjacentCounter  — keep default
         undefined,  // maxLayerImproverIterations — keep default
-        pickOptional(VERTICAL_ALIGNERS, repo, 'vertical-aligner', L.verticalAligner),
-        pickOptional(EDGE_ROUTERS,      repo, 'edge-router',      L.edgeRouter),
-        pickOptional(PORT_ASSIGNERS,    repo, 'port-assigner',    L.portAssigner),
+        resolveStage(VERTICAL_ALIGNERS,      repo, 'vertical-aligner',    L.verticalAligner),
+        resolveStage(EDGE_ROUTERS,           repo, 'edge-router',         L.edgeRouter),
+        resolveStage(PORT_ASSIGNERS,         repo, 'port-assigner',       L.portAssigner),
     );
 
     return { graphPipeline, layoutPipeline };

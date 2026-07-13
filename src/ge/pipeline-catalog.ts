@@ -9,6 +9,7 @@
 
 import type { AcademicReference } from './pipeline-element.js';
 import { ListStrategyNames, LoadElementRepository } from './configuration-loader.js';
+import { STRATEGY_PARAMS } from './strategy-params.js';
 
 export interface CatalogParam
 {
@@ -105,7 +106,10 @@ export function GetPipelineCatalog(): CatalogSlot[]
                 algorithmName: meta?.algorithm ?? '',
                 references:    (meta?.references ?? []) as AcademicReference[],
             };
-            if (PARAMS[cn]) strategy.parameters = PARAMS[cn];
+            // Transforms declare params here; layout strategies declare them
+            // in strategy-params.ts (the same source BuildPipeline constructs from).
+            const params = PARAMS[cn] ?? STRATEGY_PARAMS[cn]?.params;
+            if (params) strategy.parameters = params;
             return strategy;
         });
         slots.push({

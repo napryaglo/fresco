@@ -31,6 +31,8 @@ export {
     type PipelineConfiguration,
     type PipelineElementRepository,
     type TransformSpec,
+    type LayoutStageSpec,
+    type StageValue,
     LoadElementRepository,
     ListStrategyNames,
     ValidateRepositoryAgainstClasses,
