@@ -2,6 +2,8 @@ import { readFileSync } from 'node:fs';
 
 import { parse as parseYaml } from 'yaml';
 
+import { elementRepository } from './pipeline-elements-data.js';
+
 import {
     AdjacentCrossingCounter,
     AdjacentLayerMoveImprover,
@@ -209,8 +211,15 @@ interface YamlElement
 
 export type PipelineElementRepository = Record<string /* stage */, Record<string /* className */, YamlElement>>;
 
-export function LoadElementRepository(filePath: string): PipelineElementRepository
+export function LoadElementRepository(filePath?: string): PipelineElementRepository
 {
+    // No path → the statically-imported, browser-safe metadata module.
+    // This is the path Plexus (renderer) and the catalog use; there is
+    // no fs available there.
+    if (filePath === undefined)
+    {
+        return elementRepository;
+    }
     const text = readFileSync(filePath, 'utf8');
     const parsed = parseYaml(text) as PipelineElementRepository;
     return parsed;
