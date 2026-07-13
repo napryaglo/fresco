@@ -191,6 +191,19 @@ const STAGE_REGISTRIES: Record<string, Record<string, () => IPipelineElement>> =
     'crossing-counter':    CROSSING_COUNTERS,
 };
 
+// The className keys registered for each stage. Drives the catalog and
+// lets consumers enumerate the available strategies per slot without
+// reaching into the private registries.
+export function ListStrategyNames(): Record<string, string[]>
+{
+    const out: Record<string, string[]> = {};
+    for (const [stage, registry] of Object.entries(STAGE_REGISTRIES))
+    {
+        out[stage] = Object.keys(registry);
+    }
+    return out;
+}
+
 // ------------------------------------------------------------------
 // YAML repo — pipeline-elements.yaml.
 // ------------------------------------------------------------------
