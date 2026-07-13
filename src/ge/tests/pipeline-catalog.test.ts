@@ -1,8 +1,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { GetPipelineCatalog } from './pipeline-catalog.js';
-import { ListStrategyNames } from './configuration-loader.js';
+import { GetPipelineCatalog } from '../pipeline-catalog.js';
+import { ListStrategyNames } from '../configuration-loader.js';
 
 // crossing-counter is an internal diagnostic stage, intentionally not a
 // builder slot, so it is excluded from the catalog drift checks.

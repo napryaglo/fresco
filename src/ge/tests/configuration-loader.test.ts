@@ -1,8 +1,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { BuildPipeline, ListStrategyNames, LoadElementRepository, ValidateRepositoryAgainstClasses, type PipelineConfiguration } from './configuration-loader.js';
-import { Graph } from './graph.js';
+import { BuildPipeline, ListStrategyNames, LoadElementRepository, ValidateRepositoryAgainstClasses, type PipelineConfiguration } from '../configuration-loader.js';
+import { Graph } from '../graph.js';
 
 test('LoadElementRepository returns metadata for a known strategy without fs', () => {
     const repo = LoadElementRepository();

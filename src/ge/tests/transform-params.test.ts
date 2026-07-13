@@ -1,8 +1,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { Node, Edge } from './graph.js';
-import { buildNodePredicate, buildEdgePredicate } from './transform-params.js';
+import { Node, Edge } from '../graph.js';
+import { buildNodePredicate, buildEdgePredicate } from '../transform-params.js';
 
 test('node predicate: label contains', () => {
     const p = buildNodePredicate({ field: 'label', op: 'contains', value: 'db' });
