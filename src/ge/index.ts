@@ -32,7 +32,14 @@ export {
     type PipelineElementRepository,
     LoadConfigurationFile,
     LoadElementRepository,
+    ListStrategyNames,
     ValidateRepositoryAgainstClasses,
     GetConfiguration,
     BuildPipeline,
 } from './configuration-loader.js';
+export {
+    type CatalogParam,
+    type CatalogStrategy,
+    type CatalogSlot,
+    GetPipelineCatalog,
+} from './pipeline-catalog.js';
