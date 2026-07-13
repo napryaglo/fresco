@@ -1,4 +1,4 @@
-import type { Point } from '@visualisation-sub/mural/runtime';
+import type { Point } from 'mural/runtime';
 import type { Graph } from '../graph.js';
 import { LongestPathLayerAssigner, type ILayerAssigner } from '../layer-assigner/index.js';
 import { SparseDummyInserter, type IDummyInserter } from '../dummy-inserter/index.js';

@@ -1,4 +1,4 @@
-import { MetaData, Model } from '@visualisation-sub/mural/runtime';
+import { MetaData, Model } from 'mural/runtime';
 
 // Plain-data graph model. Node and Edge are Model descendants so they
 // participate in the property/binding system — property-change

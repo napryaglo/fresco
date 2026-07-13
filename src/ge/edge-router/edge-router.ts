@@ -1,4 +1,4 @@
-import type { Point } from '@visualisation-sub/mural/runtime';
+import type { Point } from 'mural/runtime';
 import type { Edge } from '../graph.js';
 import type { EdgePorts } from '../port-assigner/index.js';
 import type { IPipelineElement } from '../pipeline-element.js';

@@ -2,13 +2,13 @@ import { writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { Color } from '@visualisation-sub/mural/runtime';
+import { Color } from 'mural/runtime';
 import {
     HeadlessTarget,
     SolidColorBrush,
     SvgDrawingContext,
-} from '@visualisation-sub/mural/visual-engine';
-import { Canvas, TextBlock } from '@visualisation-sub/mural/Controls';
+} from 'mural/visual-engine';
+import { Canvas, TextBlock } from 'mural/Controls';
 import {
     BuildPipeline,
     BuildScene,

@@ -1,15 +1,30 @@
 {
   "name": "fresco",
   "version": "0.1.0",
-  "description": "Graph visualization application built on top of mural",
+  "description": "Graph visualization library built on top of mural",
   "type": "module",
-  "private": true,
+  "main": "dist/ge/index.js",
+  "types": "dist/ge/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/ge/index.d.ts",
+      "default": "./dist/ge/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "publishConfig": {
+    "registry": "http://localhost:4873/",
+    "access": "public"
+  },
   "scripts": {
     "build": "tsc",
     "typecheck": "tsc --noEmit",
     "ge": "tsx src/ge/main.ts",
     "test": "tsx --test \"src/**/*.test.ts\"",
-    "clean": "rimraf dist"
+    "clean": "rimraf dist",
+    "prepublishOnly": "npm run clean && npm run build"
   },
   "engines": {
     "node": ">=20"
@@ -22,7 +37,7 @@
     "typescript": "^5.7.0"
   },
   "dependencies": {
-    "@visualisation-sub/mural": "^0.1.1",
+    "mural": "^0.1.1",
     "yaml": "^2.9.0"
   }
 }

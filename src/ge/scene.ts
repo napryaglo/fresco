@@ -6,7 +6,7 @@ import {
     Visual,
     type DrawingContext,
     type TextMetrics,
-} from '@visualisation-sub/mural/runtime';
+} from 'mural/runtime';
 import {
     DashStyle,
     EllipseGeometry,
@@ -17,8 +17,8 @@ import {
     LineGeometry,
     Pen,
     SolidColorBrush,
-} from '@visualisation-sub/mural/visual-engine';
-import { Canvas } from '@visualisation-sub/mural/Controls';
+} from 'mural/visual-engine';
+import { Canvas } from 'mural/Controls';
 import type { Edge, Graph } from './graph.js';
 
 // One filled circle, optionally with a centered text label. Sized to
