@@ -126,6 +126,7 @@ export const elementRepository: PipelineElementRepository = {
         PolylineEdgeRouter:     { name: 'Polyline',     algorithm: 'Follow chain through dummy waypoints as straight segments', references: [] },
         OrthogonalEdgeRouter:   { name: 'Orthogonal',   algorithm: 'Per-segment vertical–horizontal–vertical staircase',       references: [] },
         StraightLineEdgeRouter: { name: 'Straight Line', algorithm: 'Direct 2-point connection between source and target ports', references: [] },
+        CardinalSideRouter:     { name: 'Diagram (native)', algorithm: 'Dominant-axis cardinal sides for host-diagram routing',  references: [] },
     },
     'crossing-counter': {
         GeometricCrossingCounter: { name: 'Geometric',           algorithm: 'Segment-segment intersection on real coordinates + edge-node overlap penalty', references: [] },

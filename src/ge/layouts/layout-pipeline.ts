@@ -14,8 +14,8 @@ import type { ILocalImprover } from '../improver/index.js';
 import { IdentityFirstLayerOrderer, type IFirstLayerOrderer } from '../first-layer-orderer/index.js';
 import type { ILayerImprover } from '../layer-improver/index.js';
 import type { IVerticalAligner } from '../vertical-aligner/index.js';
-import { StraightLineEdgeRouter, type IEdgeRouter } from '../edge-router/index.js';
-import { DistributedPortAssigner, type IPortAssigner } from '../port-assigner/index.js';
+import type { EdgeRouting, IEdgeRouter } from '../edge-router/index.js';
+import type { IPortAssigner } from '../port-assigner/index.js';
 import type { Edge } from '../graph.js';
 import type { ILayout } from './layout.js';
 
@@ -51,12 +51,12 @@ export class LayoutPipeline implements ILayout
         geometricAfter:  number;
     };
 
-    // Populated by Apply on every call. Polyline waypoints per real
-    // edge — produced by the edge router on top of the (real +
-    // dummy) position map. Consumers (the scene builder) read this
-    // to draw multi-layer edges as bent polylines instead of direct
-    // diagonals between real-node endpoints.
-    public LastRoutes?: Map<Edge, Point[]>;
+    // Populated by Apply on every call. One routing directive per real
+    // edge — produced by the edge router on top of the (real + dummy)
+    // position map. A `points` directive carries polyline waypoints (the
+    // scene builder draws them); a `sides` directive carries cardinal
+    // sides for a host diagram to route the connector itself.
+    public LastRoutes?: Map<Edge, EdgeRouting>;
 
     constructor(
         public readonly reorderer:           IReorderer = new BarycenterReorderer(),
@@ -81,15 +81,18 @@ export class LayoutPipeline implements ILayout
         // — BK already assigns chain-aligned columns, so an
         // additional pull would just fight the compaction.
         public readonly verticalAligner: IVerticalAligner | undefined = undefined,
-        // Stage 10 — edge router. Produces a polyline per real edge
-        // using dummy positions as bend waypoints. Pass undefined to
-        // fall back to two-point straight segments at render time.
-        public readonly edgeRouter:      IEdgeRouter      | undefined = new StraightLineEdgeRouter(),
+        // Stage 10 — edge router. Produces a routing directive per real
+        // edge (polyline waypoints, or cardinal sides for a host
+        // diagram). Undefined skips routing. NOTE: unlike a bare
+        // constructor, BuildPipeline supplies the default router when the
+        // config omits this stage — so it is off here, on via config.
+        public readonly edgeRouter:      IEdgeRouter      | undefined = undefined,
         // Stage 11 — port assigner. Picks boundary connection points
         // on the source / target circles for each edge; the router
         // uses these in place of node centres as chain endpoints.
-        // Pass undefined to route from centre to centre instead.
-        public readonly portAssigner:    IPortAssigner    | undefined = new DistributedPortAssigner(),
+        // Undefined skips it. As with edgeRouter, BuildPipeline (not the
+        // constructor) supplies the default when the config omits it.
+        public readonly portAssigner:    IPortAssigner    | undefined = undefined,
     ) {}
 
     public Apply(graph: Graph): Map<string, Point>

@@ -2,7 +2,7 @@ import { Point } from '@pragmatic-lab/mural/runtime';
 import type { Edge } from '../graph.js';
 import type { AcademicReference } from '../pipeline-element.js';
 import type { EdgePorts } from '../port-assigner/index.js';
-import type { IEdgeRouter } from './edge-router.js';
+import type { EdgeRouting, IEdgeRouter } from './edge-router.js';
 
 // Orthogonal (elbow-style) edge router. Each segment between two
 // consecutive chain waypoints is rendered as a vertical–horizontal–
@@ -32,9 +32,9 @@ export class OrthogonalEdgeRouter implements IEdgeRouter
         positions: Map<string, Point>,
         chains:    Map<Edge, string[]>,
         ports?:    Map<Edge, EdgePorts>,
-    ): Map<Edge, Point[]>
+    ): Map<Edge, EdgeRouting>
     {
-        const routes = new Map<Edge, Point[]>();
+        const routes = new Map<Edge, EdgeRouting>();
 
         for (const [edge, chain] of chains)
         {
@@ -75,7 +75,7 @@ export class OrthogonalEdgeRouter implements IEdgeRouter
                 }
             }
 
-            routes.set(edge, orthoPoints);
+            routes.set(edge, { kind: 'points', waypoints: orthoPoints });
         }
 
         return routes;

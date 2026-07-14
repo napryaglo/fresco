@@ -25,6 +25,7 @@ import {
     LayoutPipeline,
     LongestPathLayerAssigner,
     MapLabelsTransform,
+    CardinalSideRouter,
     MedianReorderer,
     OrthogonalEdgeRouter,
     OutDegreeFirstLayerOrderer,
@@ -50,12 +51,15 @@ import {
 // One entry in the pipeline-configurations file.
 //
 // Field semantics for the `layout` block:
-//   * missing field      → use LayoutPipeline's built-in default
-//                          for that stage
+//   * missing field / null → use the stage's default (BuildPipeline
+//                          supplies it; for the optional stages that
+//                          default to OFF this means the stage is
+//                          skipped)
 //   * "ClassName" string → instantiate that strategy class
 //                          (no-arg constructor; the class must be
 //                          registered in the lookup tables below)
-//   * null               → explicitly OFF (only valid for optional
+//   * { className, params } → instantiate with declarative params
+//   * { off: true }      → explicitly OFF (only valid for optional
 //                          stages: improver, layerImprover,
 //                          verticalAligner, edgeRouter, portAssigner)
 //
@@ -79,6 +83,13 @@ export interface LayoutStageSpec
 
 export type StageValue = string | LayoutStageSpec;
 
+// Explicit "this optional stage is off" — distinct from an absent field
+// (which uses the stage's default) and from a strategy value.
+export type OffSpec = { off: true };
+
+// An optional stage's configured value: a strategy, or an explicit off.
+export type StageEntry = StageValue | OffSpec;
+
 export interface PipelineConfiguration
 {
     name:         string;
@@ -88,14 +99,14 @@ export interface PipelineConfiguration
         layerAssigner?:     StageValue;
         firstLayerNodes?:   string[];
         firstLayerOrderer?: StageValue;
-        layerImprover?:     StageValue | null;
+        layerImprover?:     StageEntry | null;
         dummyInserter?:     StageValue;
         reorderer?:         StageValue;
-        improver?:          StageValue | null;
+        improver?:          StageEntry | null;
         positionComputer?:  StageValue;
-        verticalAligner?:   StageValue | null;
-        portAssigner?:      StageValue | null;
-        edgeRouter?:        StageValue | null;
+        verticalAligner?:   StageEntry | null;
+        portAssigner?:      StageEntry | null;
+        edgeRouter?:        StageEntry | null;
     };
 }
 
@@ -174,6 +185,7 @@ const EDGE_ROUTERS: Record<string, () => IEdgeRouter> = {
     PolylineEdgeRouter:     () => new PolylineEdgeRouter(),
     OrthogonalEdgeRouter:   () => new OrthogonalEdgeRouter(),
     StraightLineEdgeRouter: () => new StraightLineEdgeRouter(),
+    CardinalSideRouter:     () => new CardinalSideRouter(),
 };
 
 // Crossing counters aren't user-selectable from configurations, but
@@ -353,6 +365,31 @@ function pick<T extends IPipelineElement>(
     return factory();
 }
 
+// The explicit "off" sentinel for an optional stage.
+function isOff(value: unknown): value is OffSpec
+{
+    return typeof value === 'object' && value !== null && (value as { off?: unknown }).off === true;
+}
+
+// Resolves an OPTIONAL stage, distinguishing three cases the required-stage
+// resolver can't: an explicit { off: true } → skip; an absent value → the
+// stage's default (via defaultFactory, or skip when none); otherwise build
+// the named strategy. This is where "off" actually reaches the pipeline as
+// undefined — the LayoutPipeline constructor no longer defaults these
+// stages, so undefined genuinely skips them.
+function optionalStage<T extends IPipelineElement>(
+    registry:        Record<string, () => T>,
+    repo:            PipelineElementRepository,
+    stage:           string,
+    value:           StageEntry | null | undefined,
+    defaultFactory?: () => T,
+): T | undefined
+{
+    if (isOff(value)) return undefined;
+    if (value === null || value === undefined) return defaultFactory ? defaultFactory() : undefined;
+    return resolveStage(registry, repo, stage, value);
+}
+
 // Resolves one layout stage value: null/undefined → use LayoutPipeline's
 // default; a class-name string → no-arg construction; a LayoutStageSpec with
 // params → parameterized construction via strategy-params.ts. Every referenced
@@ -436,19 +473,22 @@ export function BuildPipeline(
     const L = config.layout;
     const layoutPipeline = new LayoutPipeline(
         resolveStage(REORDERERS,             repo, 'reorderer',           L.reorderer),
-        resolveStage(IMPROVERS,              repo, 'improver',            L.improver),
+        optionalStage(IMPROVERS,             repo, 'improver',            L.improver),
         resolveStage(FIRST_LAYER_ORDERERS,   repo, 'first-layer-orderer', L.firstLayerOrderer),
         L.firstLayerNodes !== undefined ? new Set(L.firstLayerNodes) : undefined,
-        resolveStage(LAYER_IMPROVERS,        repo, 'layer-improver',      L.layerImprover),
+        optionalStage(LAYER_IMPROVERS,       repo, 'layer-improver',      L.layerImprover),
         resolveStage(LAYER_ASSIGNERS,        repo, 'layer-assigner',      L.layerAssigner),
         resolveStage(DUMMY_INSERTERS,        repo, 'dummy-inserter',      L.dummyInserter),
         resolveStage(POSITION_COMPUTERS,     repo, 'position-computer',   L.positionComputer),
         undefined,  // geometricCounter — keep default
         undefined,  // adjacentCounter  — keep default
         undefined,  // maxLayerImproverIterations — keep default
-        resolveStage(VERTICAL_ALIGNERS,      repo, 'vertical-aligner',    L.verticalAligner),
-        resolveStage(EDGE_ROUTERS,           repo, 'edge-router',         L.edgeRouter),
-        resolveStage(PORT_ASSIGNERS,         repo, 'port-assigner',       L.portAssigner),
+        optionalStage(VERTICAL_ALIGNERS,     repo, 'vertical-aligner',    L.verticalAligner),
+        // edge-router and port-assigner are ON by default: BuildPipeline
+        // supplies the default here (the constructor no longer does), so
+        // { off: true } can genuinely skip them.
+        optionalStage(EDGE_ROUTERS,          repo, 'edge-router',         L.edgeRouter,   () => new StraightLineEdgeRouter()),
+        optionalStage(PORT_ASSIGNERS,        repo, 'port-assigner',       L.portAssigner, () => new DistributedPortAssigner()),
     );
 
     return { graphPipeline, layoutPipeline };

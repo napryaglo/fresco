@@ -2,7 +2,7 @@ import { writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { Color } from '@pragmatic-lab/mural/runtime';
+import { Color, type Point } from '@pragmatic-lab/mural/runtime';
 import {
     HeadlessTarget,
     SolidColorBrush,
@@ -15,6 +15,7 @@ import {
     Graph,
     LoadElementRepository,
     ValidateRepositoryAgainstClasses,
+    type Edge,
 } from './index.js';
 import { GetConfiguration } from './configuration-loader-node.js';
 
@@ -117,6 +118,19 @@ const { graphPipeline, layoutPipeline } = BuildPipeline(config, repo);
 const finalGraph = graphPipeline.Apply(g);
 const positions  = layoutPipeline.Apply(finalGraph);
 
+// The SVG scene draws polylines, so it consumes only `points` routing
+// directives; `sides` directives target a host diagram and have no SVG
+// form here.
+let pointRoutes: Map<Edge, Point[]> | undefined;
+if (layoutPipeline.LastRoutes !== undefined)
+{
+    pointRoutes = new Map<Edge, Point[]>();
+    for (const [edge, routing] of layoutPipeline.LastRoutes)
+    {
+        if (routing.kind === 'points') pointRoutes.set(edge, routing.waypoints);
+    }
+}
+
 // Compose the Visual tree. SceneStyle overrides any of the per-node /
 // per-edge defaults; left empty here for the stock look.
 const scene = BuildScene(finalGraph, positions, {
@@ -124,7 +138,7 @@ const scene = BuildScene(finalGraph, positions, {
     nodeFillColor: Color.FromHex('#E6F2FF'),
     edgeColor:     Color.FromHex('#666666'),
     drawGrid:      true,
-}, layoutPipeline.LastRoutes);
+}, pointRoutes);
 
 // Overlay the configuration name + crossing-count metric in the
 // top-left corner so the SVG is self-contained.

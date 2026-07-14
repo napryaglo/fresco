@@ -2,7 +2,7 @@ import type { Point } from '@pragmatic-lab/mural/runtime';
 import type { Edge } from '../graph.js';
 import type { AcademicReference } from '../pipeline-element.js';
 import type { EdgePorts } from '../port-assigner/index.js';
-import type { IEdgeRouter } from './edge-router.js';
+import type { EdgeRouting, IEdgeRouter } from './edge-router.js';
 
 // Minimum-viable polyline router. For each original edge, the route
 // is exactly the positions of its chain — `[pos(u), pos(d1), …,
@@ -28,9 +28,9 @@ export class PolylineEdgeRouter implements IEdgeRouter
         positions: Map<string, Point>,
         chains:    Map<Edge, string[]>,
         ports?:    Map<Edge, EdgePorts>,
-    ): Map<Edge, Point[]>
+    ): Map<Edge, EdgeRouting>
     {
-        const routes = new Map<Edge, Point[]>();
+        const routes = new Map<Edge, EdgeRouting>();
         for (const [edge, chain] of chains)
         {
             const port = ports?.get(edge);
@@ -47,7 +47,7 @@ export class PolylineEdgeRouter implements IEdgeRouter
             }
             if (complete && points.length >= 2)
             {
-                routes.set(edge, points);
+                routes.set(edge, { kind: 'points', waypoints: points });
             }
         }
         return routes;

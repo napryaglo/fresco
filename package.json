@@ -1,6 +1,6 @@
 {
   "name": "@pragmatic-lab/fresco",
-  "version": "0.2.3",
+  "version": "0.3.0",
   "description": "Graph visualization library built on top of mural",
   "type": "module",
   "main": "dist/ge/index.js",

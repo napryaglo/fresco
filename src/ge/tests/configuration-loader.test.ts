@@ -48,3 +48,40 @@ test('BuildPipeline still accepts plain no-arg transform strings', () => {
     const out = graphPipeline.Apply(g);
     assert.deepEqual(out.nodes.map((n) => n.Id).sort(), ['a', 'b']);
 });
+
+test('an omitted edge-router / port-assigner gets the on-by-default strategy', () => {
+    const config: PipelineConfiguration = { name: 't', transforms: [], layout: {} };
+    const { layoutPipeline } = BuildPipeline(config, LoadElementRepository());
+    assert.equal(layoutPipeline.edgeRouter?.Name, 'Straight Line');
+    assert.equal(layoutPipeline.portAssigner?.Name, 'Distributed');
+});
+
+test('{ off: true } genuinely skips edge-router and port-assigner', () => {
+    const config: PipelineConfiguration = {
+        name: 't', transforms: [],
+        layout: { edgeRouter: { off: true }, portAssigner: { off: true } },
+    };
+    const { layoutPipeline } = BuildPipeline(config, LoadElementRepository());
+    assert.equal(layoutPipeline.edgeRouter, undefined);
+    assert.equal(layoutPipeline.portAssigner, undefined);
+});
+
+test('CardinalSideRouter is selectable as the edge-router stage', () => {
+    const config: PipelineConfiguration = {
+        name: 't', transforms: [], layout: { edgeRouter: 'CardinalSideRouter' },
+    };
+    const { layoutPipeline } = BuildPipeline(config, LoadElementRepository());
+    assert.equal(layoutPipeline.edgeRouter?.Name, 'Diagram (native)');
+});
+
+test('a disabled edge-router produces no routes in Apply', () => {
+    const config: PipelineConfiguration = {
+        name: 't', transforms: [], layout: { edgeRouter: { off: true } },
+    };
+    const { layoutPipeline } = BuildPipeline(config, LoadElementRepository());
+    const g = new Graph();
+    g.AddNode('a'); g.AddNode('b');
+    g.AddEdge('a', 'b');
+    layoutPipeline.Apply(g);
+    assert.equal(layoutPipeline.LastRoutes, undefined);
+});

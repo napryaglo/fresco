@@ -2,7 +2,7 @@ import type { Point } from '@pragmatic-lab/mural/runtime';
 import type { Edge } from '../graph.js';
 import type { AcademicReference } from '../pipeline-element.js';
 import type { EdgePorts } from '../port-assigner/index.js';
-import type { IEdgeRouter } from './edge-router.js';
+import type { EdgeRouting, IEdgeRouter } from './edge-router.js';
 
 // Returns a 2-point line per edge: source endpoint → target
 // endpoint, ignoring any dummy waypoints in the chain. With ports
@@ -22,9 +22,9 @@ export class StraightLineEdgeRouter implements IEdgeRouter
         positions: Map<string, Point>,
         chains:    Map<Edge, string[]>,
         ports?:    Map<Edge, EdgePorts>,
-    ): Map<Edge, Point[]>
+    ): Map<Edge, EdgeRouting>
     {
-        const routes = new Map<Edge, Point[]>();
+        const routes = new Map<Edge, EdgeRouting>();
         for (const [edge, chain] of chains)
         {
             if (chain.length < 2) continue;
@@ -32,7 +32,7 @@ export class StraightLineEdgeRouter implements IEdgeRouter
             const start = port?.source ?? positions.get(chain[0]!);
             const end   = port?.target ?? positions.get(chain[chain.length - 1]!);
             if (start === undefined || end === undefined) continue;
-            routes.set(edge, [start, end]);
+            routes.set(edge, { kind: 'points', waypoints: [start, end] });
         }
         return routes;
     }
