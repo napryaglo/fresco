@@ -1,6 +1,7 @@
 import { elementRepository } from './pipeline-elements-data.js';
 import { buildNodePredicate, buildEdgePredicate, type TransformParams } from './transform-params.js';
 import { STRATEGY_PARAMS } from './strategy-params.js';
+import type { PipelineElementExtension } from './pipeline-extension.js';
 
 import {
     AdjacentCrossingCounter,
@@ -383,34 +384,43 @@ function optionalStage<T extends IPipelineElement>(
     stage:           string,
     value:           StageEntry | null | undefined,
     defaultFactory?: () => T,
+    ext?:            Map<string, PipelineElementExtension>,
 ): T | undefined
 {
     if (isOff(value)) return undefined;
     if (value === null || value === undefined) return defaultFactory ? defaultFactory() : undefined;
-    return resolveStage(registry, repo, stage, value);
+    return resolveStage(registry, repo, stage, value, ext);
 }
 
 // Resolves one layout stage value: null/undefined → use LayoutPipeline's
 // default; a class-name string → no-arg construction; a LayoutStageSpec with
-// params → parameterized construction via strategy-params.ts. Every referenced
-// class must be declared in the repo.
+// params → parameterized construction via strategy-params.ts. A className that
+// matches a consumer-supplied extension for this stage is built by the
+// extension (and bypasses the repo check, since the consumer declares it);
+// every other className must be declared in the repo.
 function resolveStage<T extends IPipelineElement>(
     registry: Record<string, () => T>,
     repo:     PipelineElementRepository,
     stage:    string,
     value:    StageValue | null | undefined,
+    ext?:     Map<string, PipelineElementExtension>,
 ): T | undefined
 {
     if (value === null || value === undefined) return undefined;
     const className = typeof value === 'string' ? value : value.className;
+    const params    = typeof value === 'string' ? undefined : value.params;
+
+    const extension = ext?.get(`${stage}:${className}`);
+    if (extension !== undefined) return extension.build(params) as T;
+
     if (!(stage in repo) || !(className in (repo[stage] ?? {})))
     {
         throw new Error(`Configuration references ${stage}.${className}, which is not declared in the repo.`);
     }
-    if (typeof value !== 'string' && value.params !== undefined)
+    if (params !== undefined)
     {
         const def = STRATEGY_PARAMS[className];
-        if (def !== undefined) return def.build(value.params) as T;
+        if (def !== undefined) return def.build(params) as T;
     }
     const factory = registry[className];
     if (factory === undefined)
@@ -457,13 +467,20 @@ function buildTransform(entry: string | TransformSpec, repo: PipelineElementRepo
 }
 
 export function BuildPipeline(
-    config: PipelineConfiguration,
-    repo:   PipelineElementRepository,
+    config:      PipelineConfiguration,
+    repo:        PipelineElementRepository,
+    extensions?: readonly PipelineElementExtension[],
 ): {
     graphPipeline:  GraphPipeline;
     layoutPipeline: LayoutPipeline;
 }
 {
+    // Index consumer-supplied elements by `${stage}:${className}` so
+    // resolveStage can prefer them over (and validate independently of)
+    // the built-in registries + repo.
+    const ext = new Map<string, PipelineElementExtension>();
+    for (const e of extensions ?? []) ext.set(`${e.stage}:${e.className}`, e);
+
     const graphPipeline = new GraphPipeline();
     for (const entry of config.transforms)
     {
@@ -472,23 +489,23 @@ export function BuildPipeline(
 
     const L = config.layout;
     const layoutPipeline = new LayoutPipeline(
-        resolveStage(REORDERERS,             repo, 'reorderer',           L.reorderer),
-        optionalStage(IMPROVERS,             repo, 'improver',            L.improver),
-        resolveStage(FIRST_LAYER_ORDERERS,   repo, 'first-layer-orderer', L.firstLayerOrderer),
+        resolveStage(REORDERERS,             repo, 'reorderer',           L.reorderer,        ext),
+        optionalStage(IMPROVERS,             repo, 'improver',            L.improver,         undefined, ext),
+        resolveStage(FIRST_LAYER_ORDERERS,   repo, 'first-layer-orderer', L.firstLayerOrderer, ext),
         L.firstLayerNodes !== undefined ? new Set(L.firstLayerNodes) : undefined,
-        optionalStage(LAYER_IMPROVERS,       repo, 'layer-improver',      L.layerImprover),
-        resolveStage(LAYER_ASSIGNERS,        repo, 'layer-assigner',      L.layerAssigner),
-        resolveStage(DUMMY_INSERTERS,        repo, 'dummy-inserter',      L.dummyInserter),
-        resolveStage(POSITION_COMPUTERS,     repo, 'position-computer',   L.positionComputer),
+        optionalStage(LAYER_IMPROVERS,       repo, 'layer-improver',      L.layerImprover,    undefined, ext),
+        resolveStage(LAYER_ASSIGNERS,        repo, 'layer-assigner',      L.layerAssigner,    ext),
+        resolveStage(DUMMY_INSERTERS,        repo, 'dummy-inserter',      L.dummyInserter,    ext),
+        resolveStage(POSITION_COMPUTERS,     repo, 'position-computer',   L.positionComputer, ext),
         undefined,  // geometricCounter — keep default
         undefined,  // adjacentCounter  — keep default
         undefined,  // maxLayerImproverIterations — keep default
-        optionalStage(VERTICAL_ALIGNERS,     repo, 'vertical-aligner',    L.verticalAligner),
+        optionalStage(VERTICAL_ALIGNERS,     repo, 'vertical-aligner',    L.verticalAligner,  undefined, ext),
         // edge-router and port-assigner are ON by default: BuildPipeline
         // supplies the default here (the constructor no longer does), so
         // { off: true } can genuinely skip them.
-        optionalStage(EDGE_ROUTERS,          repo, 'edge-router',         L.edgeRouter,   () => new StraightLineEdgeRouter()),
-        optionalStage(PORT_ASSIGNERS,        repo, 'port-assigner',       L.portAssigner, () => new DistributedPortAssigner()),
+        optionalStage(EDGE_ROUTERS,          repo, 'edge-router',         L.edgeRouter,   () => new StraightLineEdgeRouter(),    ext),
+        optionalStage(PORT_ASSIGNERS,        repo, 'port-assigner',       L.portAssigner, () => new DistributedPortAssigner(),   ext),
     );
 
     return { graphPipeline, layoutPipeline };

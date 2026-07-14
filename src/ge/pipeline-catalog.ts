@@ -8,6 +8,7 @@
 // strategy list. It is pure data and browser-safe (no fs).
 
 import type { AcademicReference } from './pipeline-element.js';
+import type { PipelineElementExtension } from './pipeline-extension.js';
 import { ListStrategyNames, LoadElementRepository } from './configuration-loader.js';
 import { STRATEGY_PARAMS } from './strategy-params.js';
 
@@ -89,7 +90,11 @@ function pretty(className: string): string
         .trim();
 }
 
-export function GetPipelineCatalog(): CatalogSlot[]
+// Builds the catalog. When `extensions` are supplied, each consumer element
+// is appended to its stage's strategy list (after the built-ins), so a
+// builder UI surfaces custom options alongside Fresco's own — the same list
+// BuildPipeline resolves against.
+export function GetPipelineCatalog(extensions?: readonly PipelineElementExtension[]): CatalogSlot[]
 {
     const names = ListStrategyNames();
     const repo = LoadElementRepository();
@@ -112,6 +117,20 @@ export function GetPipelineCatalog(): CatalogSlot[]
             if (params) strategy.parameters = params;
             return strategy;
         });
+
+        for (const e of extensions ?? [])
+        {
+            if (e.stage !== slotId) continue;
+            const strategy: CatalogStrategy = {
+                className:     e.className,
+                name:          e.name,
+                algorithmName: e.algorithmName,
+                references:    e.references ?? [],
+            };
+            if (e.parameters) strategy.parameters = e.parameters;
+            strategies.push(strategy);
+        }
+
         slots.push({
             slotId,
             kind:       slotId === 'graph-transforms' ? 'transform-list' : 'strategy-slot',

@@ -33,11 +33,14 @@ export {
     type TransformSpec,
     type LayoutStageSpec,
     type StageValue,
+    type StageEntry,
+    type OffSpec,
     LoadElementRepository,
     ListStrategyNames,
     ValidateRepositoryAgainstClasses,
     BuildPipeline,
 } from './configuration-loader.js';
+export { type PipelineElementExtension } from './pipeline-extension.js';
 // Note: LoadConfigurationFile / GetConfiguration / LoadElementRepositoryFromFile
 // live in configuration-loader-node.ts (they use node:fs) and are intentionally
 // NOT re-exported here — importing this barrel must stay browser-safe. Node/CLI
