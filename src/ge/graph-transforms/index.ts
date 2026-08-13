@@ -8,5 +8,6 @@ export { FilterNodesTransform }           from './filter-nodes.js';
 export { FilterEdgesTransform }           from './filter-edges.js';
 export { DedupEdgesTransform }            from './dedup-edges.js';
 export { CollapseAntiparallelEdgesTransform } from './collapse-antiparallel-edges.js';
+export { MakeAcyclicTransform }           from './make-acyclic.js';
 export { DropIsolatedNodesTransform }     from './drop-isolated-nodes.js';
 export { MapLabelsTransform }             from './map-labels.js';

@@ -13,6 +13,9 @@ export const elementRepository: PipelineElementRepository = {
     'graph-transforms': {
         DedupEdgesTransform:                { name: 'Deduplicate Edges',        algorithm: 'Set-based edge deduplication',            references: [] },
         CollapseAntiparallelEdgesTransform: { name: 'Collapse Antiparallel Edges', algorithm: 'Antiparallel edge collapse (first-wins)', references: [] },
+        MakeAcyclicTransform:               { name: 'Make Acyclic',             algorithm: 'Greedy feedback-arc-set (Eades–Lin–Smyth) with self-loop removal', references: [
+            { authors: 'Eades, P., Lin, X., Smyth, W. F.', year: 1989, title: 'A fast and effective heuristic for the feedback arc set problem', venue: 'Information Processing Letters' },
+        ] },
         FilterNodesTransform:               { name: 'Filter Nodes',             algorithm: 'Predicate-based node filtering',          references: [] },
         FilterEdgesTransform:               { name: 'Filter Edges',             algorithm: 'Predicate-based edge filtering',          references: [] },
         DropIsolatedNodesTransform:         { name: 'Drop Isolated Nodes',      algorithm: 'Degree-zero node removal',                references: [] },

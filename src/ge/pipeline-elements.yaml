@@ -30,6 +30,14 @@ graph-transforms:
     name:      "Collapse Antiparallel Edges"
     algorithm: "Antiparallel edge collapse (first-wins)"
     references: []
+  MakeAcyclicTransform:
+    name:      "Make Acyclic"
+    algorithm: "Greedy feedback-arc-set (Eades–Lin–Smyth) with self-loop removal"
+    references:
+      - authors: "Eades, P., Lin, X., Smyth, W. F."
+        year:    1989
+        title:   "A fast and effective heuristic for the feedback arc set problem"
+        venue:   "Information Processing Letters"
   FilterNodesTransform:
     name:      "Filter Nodes"
     algorithm: "Predicate-based node filtering"

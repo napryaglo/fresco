@@ -25,6 +25,7 @@ import {
     IlpExactImprover,
     LayoutPipeline,
     LongestPathLayerAssigner,
+    MakeAcyclicTransform,
     MapLabelsTransform,
     CardinalSideRouter,
     MedianReorderer,
@@ -124,6 +125,7 @@ export interface PipelineConfiguration
 const TRANSFORMS: Record<string, () => IGraphTransform> = {
     DedupEdgesTransform:                () => new DedupEdgesTransform(),
     CollapseAntiparallelEdgesTransform: () => new CollapseAntiparallelEdgesTransform(),
+    MakeAcyclicTransform:               () => new MakeAcyclicTransform(),
     DropIsolatedNodesTransform:         () => new DropIsolatedNodesTransform(),
 };
 
