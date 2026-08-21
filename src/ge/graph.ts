@@ -1,6 +1,6 @@
-import { MetaData, Model } from '@pragmatic-lab/mural/runtime';
+import { MetaData, MuralBase } from '@pragmatic-lab/mural/runtime';
 
-// Plain-data graph model. Node and Edge are Model descendants so they
+// Plain-data graph model. Node and Edge are MuralBase descendants so they
 // participate in the property/binding system — property-change
 // notifications, attached properties from transforms, etc. — without
 // any layout / render machinery (that's Visual's job).
@@ -10,10 +10,10 @@ import { MetaData, Model } from '@pragmatic-lab/mural/runtime';
 // over get_property_value / set_property_value (keyed by those fields) so
 // external code can read and write fields naturally.
 
-export class Node extends Model
+export class Node extends MuralBase
 {
-    static IdKey    = Model.RegisterProperty<string>(Node, 'Id', '', MetaData.None);
-    static LabelKey = Model.RegisterProperty<string | undefined>(Node, 'Label', undefined, MetaData.None);
+    static IdKey    = MuralBase.RegisterProperty<string>(Node, 'Id', '', MetaData.None);
+    static LabelKey = MuralBase.RegisterProperty<string | undefined>(Node, 'Label', undefined, MetaData.None);
 
     constructor(id: string, label?: string)
     {
@@ -29,10 +29,10 @@ export class Node extends Model
     public set Label(value: string | undefined) { this.set_property_value(Node.LabelKey, value); }
 }
 
-export class Edge extends Model
+export class Edge extends MuralBase
 {
-    static FromKey = Model.RegisterProperty<string>(Edge, 'From', '', MetaData.None);
-    static ToKey   = Model.RegisterProperty<string>(Edge, 'To', '', MetaData.None);
+    static FromKey = MuralBase.RegisterProperty<string>(Edge, 'From', '', MetaData.None);
+    static ToKey   = MuralBase.RegisterProperty<string>(Edge, 'To', '', MetaData.None);
 
     constructor(from: string, to: string)
     {
