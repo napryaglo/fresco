@@ -22,6 +22,7 @@
     "build": "tsc",
     "typecheck": "tsc --noEmit",
     "ge": "tsx src/ge/main.ts",
+    "ge:compound": "tsx src/ge/compound-demo.ts",
     "test": "tsx --test \"src/**/*.test.ts\"",
     "clean": "rimraf dist",
     "prepublishOnly": "npm run clean && npm run build"
