@@ -75,7 +75,7 @@ export class BrandesKopfPositionComputer implements IPositionComputer
         public readonly padding:       number = 50,
     ) {}
 
-    public Compute(layers: string[][], edges?: Edge[], _sizes?: Map<string, Size>): Map<string, Point>
+    public Compute(layers: string[][], edges?: Edge[], sizes?: Map<string, Size>): Map<string, Point>
     {
         // Original-orientation neighbour lookups, sorted later per pass.
         const upper = new Map<string, string[]>();
@@ -112,10 +112,10 @@ export class BrandesKopfPositionComputer implements IPositionComputer
         }
 
         // Run the four passes and normalise each so min x = 0.
-        const dl = this.runPass(layers, 'down', 'left',  upper, lower);
-        const dr = this.runPass(layers, 'down', 'right', upper, lower);
-        const ul = this.runPass(layers, 'up',   'left',  upper, lower);
-        const ur = this.runPass(layers, 'up',   'right', upper, lower);
+        const dl = this.runPass(layers, 'down', 'left',  upper, lower, sizes);
+        const dr = this.runPass(layers, 'down', 'right', upper, lower, sizes);
+        const ul = this.runPass(layers, 'up',   'left',  upper, lower, sizes);
+        const ur = this.runPass(layers, 'up',   'right', upper, lower, sizes);
 
         const passes = [dl, dr, ul, ur].map(normaliseToZero);
 
@@ -156,10 +156,22 @@ export class BrandesKopfPositionComputer implements IPositionComputer
         for (const x of xFinal.values()) if (x < minX) minX = x;
         if (!isFinite(minX)) minX = 0;
 
+        // Per-layer vertical bands: each layer's centre is offset from the
+        // previous by half of each layer's tallest node plus the uniform
+        // layer gap. With all heights 0 this reduces to padding + i*spacing.
+        const height = (id: string): number => sizes?.get(id)?.height ?? 0;
+        const layerMaxH = layers.map(row => row.reduce((m, id) => Math.max(m, height(id)), 0));
+        const yCenter: number[] = [];
+        for (let i = 0; i < layers.length; i++)
+        {
+            if (i === 0) yCenter.push(this.padding + layerMaxH[0]! / 2);
+            else yCenter.push(yCenter[i - 1]! + layerMaxH[i - 1]! / 2 + this.layerSpacingY + layerMaxH[i]! / 2);
+        }
+
         const positions = new Map<string, Point>();
         for (let i = 0; i < layers.length; i++)
         {
-            const y = this.padding + i * this.layerSpacingY;
+            const y = yCenter[i]!;
             for (const v of layers[i]!)
             {
                 const x = this.padding + (xFinal.get(v)! - minX);
@@ -179,8 +191,14 @@ export class BrandesKopfPositionComputer implements IPositionComputer
         bias:      Bias,
         upper:     Map<string, string[]>,
         lower:     Map<string, string[]>,
+        sizes?:    Map<string, Size>,
     ): Map<string, number>
     {
+        // Half-width of a node (0 when it carries no Size — e.g. dummies),
+        // so the separation between two in-layer neighbours grows by each
+        // one's half-width. With all sizes absent this collapses to the
+        // uniform nodeSpacingX pitch.
+        const halfWidth = (id: string): number => (sizes?.get(id)?.width ?? 0) / 2;
         // Reverse layer ORDER for bottom-up so the canonical pass,
         // which always processes top-to-bottom, sees what was the
         // bottom layer first. Reverse WITHIN each layer for rightmost
@@ -252,7 +270,6 @@ export class BrandesKopfPositionComputer implements IPositionComputer
         const xBlock = new Map<string, number>();
         for (const row of tlayers)
             for (const v of row) { sink.set(v, v); shift.set(v, Infinity); }
-        const delta = this.nodeSpacingX;
 
         const placeBlock = (v: string): void =>
         {
@@ -265,8 +282,13 @@ export class BrandesKopfPositionComputer implements IPositionComputer
                 const pw = pos.get(w)!;
                 if (pw > 0)
                 {
-                    const u = root.get(tlayers[lw]![pw - 1]!)!;
+                    const leftId = tlayers[lw]![pw - 1]!;
+                    const u = root.get(leftId)!;
                     placeBlock(u);
+                    // Per-pair minimum separation: half of each neighbour's
+                    // width plus the uniform gap. Dummies (no Size) → the
+                    // original nodeSpacingX pitch.
+                    const delta = halfWidth(leftId) + this.nodeSpacingX + halfWidth(w);
                     if (sink.get(v) === v) sink.set(v, sink.get(u)!);
                     if (sink.get(v) !== sink.get(u))
                     {
