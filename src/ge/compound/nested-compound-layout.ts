@@ -5,19 +5,19 @@ import type { FlatLayoutPipeline } from '../layouts/flat-layout-pipeline.js';
 import { boundingBox, type Rect, type Size } from '../geometry.js';
 import type { EdgeRouting } from '../edge-router/index.js';
 import { childrenOf, isContainer, ancestors, lca } from './hierarchy.js';
-import { globalRank, portSideFor } from './orientation.js';
-import { PortSide, portId } from './port.js';
-
-// A port minted for a boundary-crossing edge during a container's interior
-// run: its synthetic node id, the original edge, the border it sits on, and
-// the interior child it stubs to. Recorded so later routing can stitch the
-// edge through it.
-interface PortRec { id: string; edge: Edge; side: PortSide; interior: string }
 
 // In-place nested-container layout. Lays out each container's interior in
 // isolation with the flat pipeline, sizes it into a box, and places boxes as
-// sized nodes in their parent frame — recursively. Cross-boundary edges
-// reduce to ports on container borders (added in later tasks).
+// sized nodes in their parent frame — recursively.
+//
+// Ports are NOT layout nodes: they never enter a container's interior
+// Sugiyama run, so a box reserves no synthetic layer for them and its
+// interior stays centred. Instead, once every real node and box has a global
+// position, each boundary-crossing edge is routed through PIERCE POINTS
+// computed geometrically on the borders it crosses — on whichever side faces
+// the continuation (top/bottom for vertical flow, left/right for sideways).
+// This makes frozen containers mint ports for free (they need only positions
+// and boxes) and is the same for every border.
 //
 // A graph with no containers is delegated straight to the flat engine, so
 // this composer is a safe drop-in replacement.
@@ -35,15 +35,8 @@ export class NestedCompoundLayout implements ILayout
         const anyContainer = graph.nodes.some(n => isContainer(graph, n.Id));
         if (!anyContainer) return this.engine.Apply(graph);
 
-        // Box size per container, and each container's interior positions
-        // (keyed by container id; '' for the root/top level).
         const boxSize  = new Map<string, Size>();
         const localPos = new Map<string, Map<string, Point>>();
-        // Ports minted per container, for later cross-boundary routing.
-        const portMeta = new Map<string, PortRec[]>();
-
-        // One flat rank orients every port (which border it exits).
-        const rank = globalRank(graph);
 
         // --- Pass 1: size bottom-up (deepest containers first) ---
         // A frozen container (LayoutContent === false) halts recursion: its
@@ -63,87 +56,39 @@ export class NestedCompoundLayout implements ILayout
             if (frozen(c))
             {
                 this.freezeSubtree(graph, c, boxSize, localPos);
-                portMeta.set(c, []); // frozen interiors mint no ports (smoke scope)
                 continue;
             }
-            const local = this.buildLocalGraph(graph, c, boxSize, rank, portMeta);
+            const local = this.buildLocalGraph(graph, c, boxSize);
             const res = this.engine.Apply(local);
             localPos.set(c, res.positions);
             boxSize.set(c, this.sizeFromInterior(local, res.positions));
         }
 
         // Root level (nodes/boxes with no parent).
-        const rootLocal = this.buildLocalGraph(graph, undefined, boxSize, rank, portMeta);
+        const rootLocal = this.buildLocalGraph(graph, undefined, boxSize);
         const rootRes = this.engine.Apply(rootLocal);
         localPos.set('', rootRes.positions);
 
         // --- Pass 2: place top-down by pure translation ---
         const positions = new Map<string, Point>();
         const boxes = new Map<string, Rect>();
-        const portPos = new Map<string, Point>();
-        this.unfold(graph, undefined, new Point(0, 0), boxSize, localPos, portMeta, positions, boxes, portPos);
+        this.unfold(graph, undefined, new Point(0, 0), boxSize, localPos, positions, boxes);
 
-        // --- Cross-boundary routing: stitch each edge through its ports ---
-        const routes = this.routeEdges(graph, positions, portMeta, portPos);
+        // --- Cross-boundary routing: geometric pierce points ---
+        const routes = this.routeEdges(graph, positions, boxes);
         return { positions, boxes, routes };
     }
 
-    // One polyline per edge: source position → the ports it pierces on the
-    // way up to the LCA and back down → target position. Ports are ordered
-    // innermost-first on the source side, then innermost-last on the target
-    // side, which is the geometric order along the edge.
-    private routeEdges(
-        graph:     Graph,
-        positions: Map<string, Point>,
-        portMeta:  Map<string, PortRec[]>,
-        portPos:   Map<string, Point>,
-    ): Map<Edge, EdgeRouting>
-    {
-        const routes = new Map<Edge, EdgeRouting>();
-        const portPoint = (containerId: string | undefined, edge: Edge): Point | undefined =>
-        {
-            const rec = (portMeta.get(containerId ?? '') ?? []).find(r => r.edge === edge);
-            return rec ? portPos.get(rec.id) : undefined;
-        };
-
-        for (const e of graph.edges)
-        {
-            const from = positions.get(e.From);
-            const to   = positions.get(e.To);
-            if (from === undefined || to === undefined) continue;
-
-            const boundary = lca(graph, e.From, e.To);
-            const upto = (node: string): string[] =>
-            {
-                const out: string[] = [];
-                for (const a of ancestors(graph, node)) { if (a === boundary) break; out.push(a); }
-                return out;
-            };
-
-            const waypoints: Point[] = [from];
-            for (const c of upto(e.From)) { const p = portPoint(c, e); if (p) waypoints.push(p); }
-            for (const c of upto(e.To).reverse()) { const p = portPoint(c, e); if (p) waypoints.push(p); }
-            waypoints.push(to);
-            routes.set(e, { kind: 'points', waypoints });
-        }
-        return routes;
-    }
-
-    // A container's interior as a standalone Graph. Each graph edge is
-    // rewritten to this level's representatives (the ancestor of each
-    // endpoint that is a direct child of the container):
-    //   * both inside, distinct → an intra-level edge between the two
-    //     representatives (leaf↔leaf, leaf↔box, or box↔box);
-    //   * both inside the same child → skip (routed one level deeper);
-    //   * exactly one inside → the edge crosses the border: mint a PORT on
-    //     the appropriate side and stub the interior representative to it;
-    //   * neither inside → the edge does not touch this container → skip.
+    // A container's interior as a standalone Graph: its direct children as
+    // sized nodes (a sub-container uses its already-computed box size), and
+    // one edge per pair of DISTINCT children the graph connects (via each
+    // endpoint's representative at this level). Edges that leave the container
+    // — or stay within a single child — are not represented here; the crossing
+    // is handled later by geometric routing.
     private buildLocalGraph(
         graph:       Graph,
         containerId: string | undefined,
         boxSize:     Map<string, Size>,
-        rank:        Map<string, number>,
-        portMeta:    Map<string, PortRec[]>,
     ): Graph
     {
         const kids = childrenOf(graph, containerId);
@@ -156,69 +101,15 @@ export class NestedCompoundLayout implements ILayout
 
         const edges: Edge[] = [];
         const seen = new Set<string>();
-        const ports: PortRec[] = [];
-
         for (const e of graph.edges)
         {
             const repFrom = this.representativeAt(graph, e.From, containerId);
             const repTo   = this.representativeAt(graph, e.To,   containerId);
-
-            if (repFrom !== undefined && repTo !== undefined)
-            {
-                if (repFrom === repTo) continue; // internal to one child subtree
-                const key = `${repFrom}->${repTo}`;
-                if (!seen.has(key)) { seen.add(key); edges.push(new Edge(repFrom, repTo)); }
-            }
-            else if (repFrom !== undefined)
-            {
-                // Edge leaves this container (source side inside).
-                this.addPort(nodes, edges, ports, containerId, e, repFrom,
-                    portSideFor(rank.get(e.From) ?? 0, rank.get(e.To) ?? 0));
-            }
-            else if (repTo !== undefined)
-            {
-                // Edge enters this container (target side inside).
-                this.addPort(nodes, edges, ports, containerId, e, repTo,
-                    portSideFor(rank.get(e.To) ?? 0, rank.get(e.From) ?? 0));
-            }
-            // else: neither endpoint is inside — edge irrelevant to this level.
+            if (repFrom === undefined || repTo === undefined || repFrom === repTo) continue;
+            const key = `${repFrom}->${repTo}`;
+            if (!seen.has(key)) { seen.add(key); edges.push(new Edge(repFrom, repTo)); }
         }
-
-        portMeta.set(containerId ?? '', ports);
         return new Graph(nodes, edges);
-    }
-
-    // Mint a zero-size port node on `side` and stub the interior node to it so
-    // longest-path layering pins it into the right band: Top ⇒ port above the
-    // interior node, otherwise ⇒ port below. (Side ports are refined later.)
-    private addPort(
-        nodes: Node[], edges: Edge[], ports: PortRec[],
-        containerId: string | undefined, edge: Edge, interior: string, side: PortSide,
-    ): void
-    {
-        const id = portId(containerId ?? '', edge, side);
-        const port = new Node(id);
-        port.Size = { width: 0, height: 0 };
-        nodes.push(port);
-        if (side === PortSide.Top) edges.push(new Edge(id, interior));
-        else edges.push(new Edge(interior, id));
-        ports.push({ id, edge, side, interior });
-    }
-
-    // The ancestor of `nodeId` that is a direct child of `containerId` (or
-    // `nodeId` itself when it is already a direct child). Undefined when
-    // `nodeId` is not inside `containerId`'s subtree.
-    private representativeAt(graph: Graph, nodeId: string, containerId: string | undefined): string | undefined
-    {
-        const byId = new Map(graph.nodes.map(n => [n.Id, n]));
-        let cur: string | undefined = nodeId;
-        while (cur !== undefined)
-        {
-            const parent: string | undefined = byId.get(cur)?.ParentId;
-            if (parent === containerId) return cur;
-            cur = parent;
-        }
-        return undefined;
     }
 
     // Size a frozen container and every container nested within it from the
@@ -260,7 +151,8 @@ export class NestedCompoundLayout implements ILayout
     }
 
     // Box size for a container = the extent of its laid-out interior plus the
-    // uniform padding on every side.
+    // uniform padding on every side. Interior holds real children only (no
+    // ports), so this is exact — no synthetic-layer inflation.
     private sizeFromInterior(local: Graph, positions: Map<string, Point>): Size
     {
         const bb = boundingBox(local.nodes.map(n =>
@@ -280,6 +172,22 @@ export class NestedCompoundLayout implements ILayout
         return d;
     }
 
+    // The ancestor of `nodeId` that is a direct child of `containerId` (or
+    // `nodeId` itself when it is already a direct child). Undefined when
+    // `nodeId` is not inside `containerId`'s subtree.
+    private representativeAt(graph: Graph, nodeId: string, containerId: string | undefined): string | undefined
+    {
+        const byId = new Map(graph.nodes.map(n => [n.Id, n]));
+        let cur: string | undefined = nodeId;
+        while (cur !== undefined)
+        {
+            const parent: string | undefined = byId.get(cur)?.ParentId;
+            if (parent === containerId) return cur;
+            cur = parent;
+        }
+        return undefined;
+    }
+
     // Translate a container's local (interior-frame) child positions into
     // global space so the interior's bounding box top-left lands at
     // `interiorTopLeft`, then recurse into each child container.
@@ -289,10 +197,8 @@ export class NestedCompoundLayout implements ILayout
         interiorTopLeft: Point,
         boxSize:     Map<string, Size>,
         localPos:    Map<string, Map<string, Point>>,
-        portMeta:    Map<string, PortRec[]>,
         outPos:      Map<string, Point>,
         outBoxes:    Map<string, Rect>,
-        outPorts:    Map<string, Point>,
     ): void
     {
         const pos = localPos.get(containerId ?? '')!;
@@ -307,14 +213,6 @@ export class NestedCompoundLayout implements ILayout
         const dx = interiorTopLeft.X - bb.position.X;
         const dy = interiorTopLeft.Y - bb.position.Y;
 
-        // Ports minted for this container live in the same interior frame, so
-        // they take the same translation. Their global positions feed routing.
-        for (const rec of portMeta.get(containerId ?? '') ?? [])
-        {
-            const p = pos.get(rec.id);
-            if (p !== undefined) outPorts.set(rec.id, new Point(p.X + dx, p.Y + dy));
-        }
-
         for (const k of kids)
         {
             const p = pos.get(k.Id)!;
@@ -328,7 +226,7 @@ export class NestedCompoundLayout implements ILayout
                 this.unfold(
                     graph, k.Id,
                     new Point(topLeft.X + this.padding, topLeft.Y + this.padding),
-                    boxSize, localPos, portMeta, outPos, outBoxes, outPorts,
+                    boxSize, localPos, outPos, outBoxes,
                 );
             }
             else
@@ -336,5 +234,82 @@ export class NestedCompoundLayout implements ILayout
                 outPos.set(k.Id, gc);
             }
         }
+    }
+
+    // One polyline per edge: source → a pierce point on every box border it
+    // crosses on the way up to the LCA and back down → target. Boxes are
+    // pierced innermost-first on the source side and innermost-last on the
+    // target side, which is the geometric order along the edge.
+    private routeEdges(
+        graph:     Graph,
+        positions: Map<string, Point>,
+        boxes:     Map<string, Rect>,
+    ): Map<Edge, EdgeRouting>
+    {
+        const routes = new Map<Edge, EdgeRouting>();
+        for (const e of graph.edges)
+        {
+            const from = positions.get(e.From);
+            const to   = positions.get(e.To);
+            if (from === undefined || to === undefined) continue;
+
+            const boundary = lca(graph, e.From, e.To);
+            const piercedBoxes = (node: string): string[] =>
+            {
+                const out: string[] = [];
+                for (const a of ancestors(graph, node)) { if (a === boundary) break; out.push(a); }
+                return out;
+            };
+
+            const waypoints: Point[] = [from];
+            for (const c of piercedBoxes(e.From))
+            {
+                const box = boxes.get(c);
+                if (box === undefined) continue;
+                const inner = this.globalPos(this.representativeAt(graph, e.From, c)!, positions, boxes);
+                if (inner !== undefined) waypoints.push(this.pierce(box, inner, to));
+            }
+            for (const c of piercedBoxes(e.To).reverse())
+            {
+                const box = boxes.get(c);
+                if (box === undefined) continue;
+                const inner = this.globalPos(this.representativeAt(graph, e.To, c)!, positions, boxes);
+                if (inner !== undefined) waypoints.push(this.pierce(box, inner, from));
+            }
+            waypoints.push(to);
+            routes.set(e, { kind: 'points', waypoints });
+        }
+        return routes;
+    }
+
+    // Global position of a node id: a leaf's placed point, or a box's centre.
+    private globalPos(id: string, positions: Map<string, Point>, boxes: Map<string, Rect>): Point | undefined
+    {
+        const p = positions.get(id);
+        if (p !== undefined) return p;
+        const b = boxes.get(id);
+        if (b !== undefined) return new Point(b.position.X + b.width / 2, b.position.Y + b.height / 2);
+        return undefined;
+    }
+
+    // The pierce point where an edge leaves `box` toward `far`. The border is
+    // whichever the direction (box centre → far) exits: top/bottom when the
+    // vertical offset dominates, left/right otherwise. The coordinate along
+    // that border tracks the interior attachment (`inner`), clamped to the
+    // border segment, so the port sits directly over its interior endpoint.
+    private pierce(box: Rect, inner: Point, far: Point): Point
+    {
+        const left = box.position.X, right = left + box.width;
+        const top  = box.position.Y, bottom = top + box.height;
+        const cx = left + box.width / 2, cy = top + box.height / 2;
+        const clamp = (v: number, lo: number, hi: number): number => Math.max(lo, Math.min(hi, v));
+
+        if (Math.abs(far.Y - cy) >= Math.abs(far.X - cx))
+        {
+            const y = far.Y >= cy ? bottom : top;
+            return new Point(clamp(inner.X, left, right), y);
+        }
+        const x = far.X >= cx ? right : left;
+        return new Point(x, clamp(inner.Y, top, bottom));
     }
 }
