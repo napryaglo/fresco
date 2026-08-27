@@ -1,4 +1,6 @@
 import { MetaData, MuralBase } from '@pragmatic-lab/mural/runtime';
+import type { Point } from '@pragmatic-lab/mural/runtime';
+import type { Size } from './geometry.js';
 
 // Plain-data graph model. Node and Edge are MuralBase descendants so they
 // participate in the property/binding system — property-change
@@ -15,6 +17,19 @@ export class Node extends MuralBase
     static IdKey    = MuralBase.RegisterProperty<string>(Node, 'Id', '', MetaData.None);
     static LabelKey = MuralBase.RegisterProperty<string | undefined>(Node, 'Label', undefined, MetaData.None);
 
+    // Compound-layout fields. All optional; absent on a flat graph, so a
+    // container-free Graph behaves exactly as before.
+    //   ParentId      — the container this node belongs to (undefined = top level).
+    //   Size          — intrinsic width/height; drives variable-size spacing.
+    //   LocalPosition — pre-placed position within the parent frame; read
+    //                   only for a frozen container's children.
+    //   LayoutContent — false freezes this container's interior (see
+    //                   NestedCompoundLayout); default true.
+    static ParentIdKey      = MuralBase.RegisterProperty<string | undefined>(Node, 'ParentId', undefined, MetaData.None);
+    static SizeKey          = MuralBase.RegisterProperty<Size | undefined>(Node, 'Size', undefined, MetaData.None);
+    static LocalPositionKey = MuralBase.RegisterProperty<Point | undefined>(Node, 'LocalPosition', undefined, MetaData.None);
+    static LayoutContentKey = MuralBase.RegisterProperty<boolean>(Node, 'LayoutContent', true, MetaData.None);
+
     constructor(id: string, label?: string)
     {
         super();
@@ -27,6 +42,18 @@ export class Node extends MuralBase
 
     public get Label(): string | undefined { return this.get_property_value(Node.LabelKey); }
     public set Label(value: string | undefined) { this.set_property_value(Node.LabelKey, value); }
+
+    public get ParentId(): string | undefined { return this.get_property_value(Node.ParentIdKey); }
+    public set ParentId(value: string | undefined) { this.set_property_value(Node.ParentIdKey, value); }
+
+    public get Size(): Size | undefined { return this.get_property_value(Node.SizeKey); }
+    public set Size(value: Size | undefined) { this.set_property_value(Node.SizeKey, value); }
+
+    public get LocalPosition(): Point | undefined { return this.get_property_value(Node.LocalPositionKey); }
+    public set LocalPosition(value: Point | undefined) { this.set_property_value(Node.LocalPositionKey, value); }
+
+    public get LayoutContent(): boolean { return this.get_property_value(Node.LayoutContentKey); }
+    public set LayoutContent(value: boolean) { this.set_property_value(Node.LayoutContentKey, value); }
 }
 
 export class Edge extends MuralBase

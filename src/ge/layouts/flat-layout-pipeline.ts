@@ -119,10 +119,11 @@ export class FlatLayoutPipeline implements ILayout
         let { layersInit, expanded, expandedEdges, ordered, chains } = runColumnStages();
 
         // Per-node intrinsic sizes for the size-aware position computer
-        // (Brandes–Köpf). Populated from Node.Size in Task 6; until then
-        // this map is empty, which the computer treats as uniform 0×0
-        // spacing — identical to the pre-size behaviour.
+        // (Brandes–Köpf). A flat graph carries no Size, so this map stays
+        // empty and the computer falls back to uniform 0×0 spacing —
+        // identical to the pre-size behaviour.
         const sizes = new Map<string, Size>();
+        for (const n of graph.nodes) if (n.Size !== undefined) sizes.set(n.Id, n.Size);
 
         // Baseline crossings — recorded BEFORE the layer-improver
         // fixpoint loop runs, so LastCrossings shows what the layout
