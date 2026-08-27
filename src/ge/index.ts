@@ -4,6 +4,11 @@
 // live in stage-named subfolders; this barrel re-exports each
 // subfolder's index for one-stop consumption.
 export { Node, Edge, Graph } from './graph.js';
+export { type Size, type Rect, boundingBox } from './geometry.js';
+export { NestedCompoundLayout } from './compound/nested-compound-layout.js';
+export { PortSide, type Port, portId } from './compound/port.js';
+export { childrenOf, isContainer, ancestors, lca } from './compound/hierarchy.js';
+export { globalRank, portSideFor } from './compound/orientation.js';
 export {
     NodeVisual,
     EdgeVisual,
