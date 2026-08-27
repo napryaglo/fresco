@@ -339,22 +339,79 @@ detail.
 
 ## 10. Testing strategy
 
-Per project convention, every test file lives in a `tests/` subfolder next to
-the source it exercises.
+Three tiers, testing three different things. Per project convention, every
+test file lives in a `tests/` subfolder next to the source it exercises.
+
+The key observation shaping this: **compound layout is unusually cheap to test
+automatically** because it has hard, code-checkable *invariants* that need
+neither a golden image nor a human eye. Correctness is asserted, not
+eyeballed; the corpus and the app are for *quality*, a separate job.
+
+### Tier 1 — Invariant unit tests (synthetic fixtures, CI backbone)
+
+Runs on graphs constructed in-test. No TODL, no Plexus. Fast, deterministic,
+the primary regression net. Carries Phases 0–4.
+
+**The layout invariants** — assertable on any output, and the reason this
+layer is high-value:
+
+- every child's position lies inside its container's box (containment holds
+  at every level);
+- no two sibling boxes overlap;
+- each port lies on the border the orientation pass assigned it (Top/Bottom/
+  Left/Right per §5.2–5.3);
+- unfolding is a pure translation — a container's interior *relative*
+  positions are identical before placement and after global unfolding;
+- `ILayout` purity: same graph in → same `LayoutResult` out.
+
+**Per-stage / per-feature unit tests:**
 
 - **Phase 0 regression:** existing flat-graph layouts produce byte-identical
   positions after the rename and the `LayoutResult` change (defaults reproduce
   current spacing).
-- **Variable-size BK:** unit tests for per-pair width separation and per-layer
-  height; a uniform-size graph must match the pre-change output.
+- **Variable-size BK (§5.4):** per-pair width separation and per-layer height;
+  a uniform-size graph must match the pre-change output exactly.
 - **Foundation:** hierarchy parsing; port generation from LCA walks; global
-  orientation rank on mixed graphs.
+  orientation rank on mixed graphs (incl. cycles via upstream
+  `MakeAcyclicTransform`, disconnected components).
 - **`NestedCompoundLayout`:** single container; nested containers (≥3 deep);
   cross-boundary edges (up, down, sideways siblings); bundling; box sizing +
-  padding; unfolding correctness (interior fits inside box; no sibling overlap).
+  padding.
 - **Frozen containers:** interior preserved exactly; box derived vs explicit
   `Size`; ports still generated; nested-frozen halts recursion.
-- **Determinism:** same graph in → same `LayoutResult` out (`ILayout` purity).
+
+### Tier 2 — Offline-generated JSON corpus (realism, automated)
+
+Validates *quality* on real architecture models without coupling TODL or
+Plexus into Fresco's test runtime. Generation and consumption are split:
+
+- **Offline generator** — the *only* component that depends on
+  `@pragmatic-lab/todl`. Compiles each `plexus_tests` project
+  (`test_architecture`, `test_hubspoke_project`, `test_waf_project`) —
+  `landscape.todl` + `scenarios.todl` — into a static **Fresco-Graph JSON**:
+  nodes with `ParentId`/`Size`, edges, one edge-set per scenario. One fixture
+  per (project, scenario). Committed into a Fresco test corpus; run
+  occasionally to refresh, **not** part of CI.
+- **Consumption (in CI)** — tests load plain JSON only (zero TODL/Plexus
+  dependency at test time). They run the compound layout, re-assert the Tier-1
+  invariants on real data, and record **quantitative quality metrics**: the
+  existing geometric + adjacent crossing counts, plus new compound metrics —
+  box-overlap count (must be 0), containment violations (must be 0), and total
+  edge length / bend count as *watched* numbers (tracked for regressions, not
+  hard-failed).
+- **SVG snapshots** — each fixture renders to SVG (Fresco already emits SVG;
+  cf. `ge-pipeline.svg`) so real models can be eyeballed without a running app,
+  and diffed between runs.
+
+Lands at the **end of Phase 4**, once `NestedCompoundLayout` produces boxes
+worth validating.
+
+### Tier 3 — Plexus visual smoke & integration (manual, later)
+
+Repositioned from "the test approach" to an occasional human check and the
+eventual integration target: Fresco layout driving a live Mural/Plexus
+diagram. Deferred until the algorithm is solid — wiring Fresco→Plexus before
+then would couple research to product prematurely. Not a CI gate.
 
 ## 11. Risks & residual costs
 
