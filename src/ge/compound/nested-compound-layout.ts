@@ -3,7 +3,8 @@ import { Graph, Node, Edge } from '../graph.js';
 import type { ILayout, LayoutResult } from '../layouts/layout.js';
 import type { FlatLayoutPipeline } from '../layouts/flat-layout-pipeline.js';
 import { boundingBox, type Rect, type Size } from '../geometry.js';
-import { childrenOf, isContainer } from './hierarchy.js';
+import type { EdgeRouting } from '../edge-router/index.js';
+import { childrenOf, isContainer, ancestors, lca } from './hierarchy.js';
 import { globalRank, portSideFor } from './orientation.js';
 import { PortSide, portId } from './port.js';
 
@@ -66,8 +67,53 @@ export class NestedCompoundLayout implements ILayout
         // --- Pass 2: place top-down by pure translation ---
         const positions = new Map<string, Point>();
         const boxes = new Map<string, Rect>();
-        this.unfold(graph, undefined, new Point(0, 0), boxSize, localPos, positions, boxes);
-        return { positions, boxes };
+        const portPos = new Map<string, Point>();
+        this.unfold(graph, undefined, new Point(0, 0), boxSize, localPos, portMeta, positions, boxes, portPos);
+
+        // --- Cross-boundary routing: stitch each edge through its ports ---
+        const routes = this.routeEdges(graph, positions, portMeta, portPos);
+        return { positions, boxes, routes };
+    }
+
+    // One polyline per edge: source position → the ports it pierces on the
+    // way up to the LCA and back down → target position. Ports are ordered
+    // innermost-first on the source side, then innermost-last on the target
+    // side, which is the geometric order along the edge.
+    private routeEdges(
+        graph:     Graph,
+        positions: Map<string, Point>,
+        portMeta:  Map<string, PortRec[]>,
+        portPos:   Map<string, Point>,
+    ): Map<Edge, EdgeRouting>
+    {
+        const routes = new Map<Edge, EdgeRouting>();
+        const portPoint = (containerId: string | undefined, edge: Edge): Point | undefined =>
+        {
+            const rec = (portMeta.get(containerId ?? '') ?? []).find(r => r.edge === edge);
+            return rec ? portPos.get(rec.id) : undefined;
+        };
+
+        for (const e of graph.edges)
+        {
+            const from = positions.get(e.From);
+            const to   = positions.get(e.To);
+            if (from === undefined || to === undefined) continue;
+
+            const boundary = lca(graph, e.From, e.To);
+            const upto = (node: string): string[] =>
+            {
+                const out: string[] = [];
+                for (const a of ancestors(graph, node)) { if (a === boundary) break; out.push(a); }
+                return out;
+            };
+
+            const waypoints: Point[] = [from];
+            for (const c of upto(e.From)) { const p = portPoint(c, e); if (p) waypoints.push(p); }
+            for (const c of upto(e.To).reverse()) { const p = portPoint(c, e); if (p) waypoints.push(p); }
+            waypoints.push(to);
+            routes.set(e, { kind: 'points', waypoints });
+        }
+        return routes;
     }
 
     // A container's interior as a standalone Graph. Each graph edge is
@@ -192,8 +238,10 @@ export class NestedCompoundLayout implements ILayout
         interiorTopLeft: Point,
         boxSize:     Map<string, Size>,
         localPos:    Map<string, Map<string, Point>>,
+        portMeta:    Map<string, PortRec[]>,
         outPos:      Map<string, Point>,
         outBoxes:    Map<string, Rect>,
+        outPorts:    Map<string, Point>,
     ): void
     {
         const pos = localPos.get(containerId ?? '')!;
@@ -208,6 +256,14 @@ export class NestedCompoundLayout implements ILayout
         const dx = interiorTopLeft.X - bb.position.X;
         const dy = interiorTopLeft.Y - bb.position.Y;
 
+        // Ports minted for this container live in the same interior frame, so
+        // they take the same translation. Their global positions feed routing.
+        for (const rec of portMeta.get(containerId ?? '') ?? [])
+        {
+            const p = pos.get(rec.id);
+            if (p !== undefined) outPorts.set(rec.id, new Point(p.X + dx, p.Y + dy));
+        }
+
         for (const k of kids)
         {
             const p = pos.get(k.Id)!;
@@ -221,7 +277,7 @@ export class NestedCompoundLayout implements ILayout
                 this.unfold(
                     graph, k.Id,
                     new Point(topLeft.X + this.padding, topLeft.Y + this.padding),
-                    boxSize, localPos, outPos, outBoxes,
+                    boxSize, localPos, portMeta, outPos, outBoxes, outPorts,
                 );
             }
             else
