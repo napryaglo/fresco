@@ -16,6 +16,7 @@ import type { ILayerImprover } from '../layer-improver/index.js';
 import type { IVerticalAligner } from '../vertical-aligner/index.js';
 import type { IEdgeRouter } from '../edge-router/index.js';
 import type { IPortAssigner } from '../port-assigner/index.js';
+import type { Size } from '../geometry.js';
 import type { ILayout, LayoutResult } from './layout.js';
 
 // Orchestrator for the layered DAG layout pipeline. Composes the
@@ -117,10 +118,16 @@ export class FlatLayoutPipeline implements ILayout
 
         let { layersInit, expanded, expandedEdges, ordered, chains } = runColumnStages();
 
+        // Per-node intrinsic sizes for the size-aware position computer
+        // (Brandes–Köpf). Populated from Node.Size in Task 6; until then
+        // this map is empty, which the computer treats as uniform 0×0
+        // spacing — identical to the pre-size behaviour.
+        const sizes = new Map<string, Size>();
+
         // Baseline crossings — recorded BEFORE the layer-improver
         // fixpoint loop runs, so LastCrossings shows what the layout
         // looked like with just the column-ordering stages.
-        const positionsBaseline = this.positionComputer.Compute(layersInit, graph.edges);
+        const positionsBaseline = this.positionComputer.Compute(layersInit, graph.edges, sizes);
         const crossingsGeoBefore = this.geometricCounter.Count(positionsBaseline, graph.edges);
         const crossingsAdjBefore = this.adjacentCounter.Count(expanded, expandedEdges);
 
@@ -147,7 +154,7 @@ export class FlatLayoutPipeline implements ILayout
 
         // Stage 8 — position computation. Produces (x, y) for every
         // node in the expanded structure, real AND dummy.
-        let positionsAfterAll = this.positionComputer.Compute(ordered, expandedEdges);
+        let positionsAfterAll = this.positionComputer.Compute(ordered, expandedEdges, sizes);
         const crossingsAdjAfter = this.adjacentCounter.Count(ordered, expandedEdges);
 
         // Stage 9 — vertical alignment. Operates on the FULL

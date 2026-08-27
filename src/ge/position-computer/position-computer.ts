@@ -1,5 +1,6 @@
 import type { Point } from '@pragmatic-lab/mural/runtime';
 import type { Edge } from '../graph.js';
+import type { Size } from '../geometry.js';
 import type { IPipelineElement } from '../pipeline-element.js';
 
 // Strategy interface for the POSITION COMPUTATION stage: maps a
@@ -16,7 +17,12 @@ import type { IPipelineElement } from '../pipeline-element.js';
 //   * `edges` is OPTIONAL — only edge-aware computers (e.g. the
 //     Brandes–Köpf coordinate assigner) use it; centred-grid-style
 //     computers can ignore the argument.
+//   * `sizes` is OPTIONAL — maps a node id to its intrinsic Size.
+//     Size-aware computers (Brandes–Köpf) use it to widen in-layer gaps
+//     and layer bands for larger nodes (e.g. container boxes); absent
+//     ids are treated as 0×0, which reproduces the uniform-spacing
+//     behaviour. Computers that ignore it lay out as before.
 export interface IPositionComputer extends IPipelineElement
 {
-    Compute(layers: string[][], edges?: Edge[]): Map<string, Point>;
+    Compute(layers: string[][], edges?: Edge[], sizes?: Map<string, Size>): Map<string, Point>;
 }

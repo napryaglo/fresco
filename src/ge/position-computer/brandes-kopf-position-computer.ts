@@ -1,5 +1,6 @@
 import { Point } from '@pragmatic-lab/mural/runtime';
 import type { Edge } from '../graph.js';
+import type { Size } from '../geometry.js';
 import type { AcademicReference } from '../pipeline-element.js';
 import type { IPositionComputer } from './position-computer.js';
 
@@ -74,7 +75,7 @@ export class BrandesKopfPositionComputer implements IPositionComputer
         public readonly padding:       number = 50,
     ) {}
 
-    public Compute(layers: string[][], edges?: Edge[]): Map<string, Point>
+    public Compute(layers: string[][], edges?: Edge[], _sizes?: Map<string, Size>): Map<string, Point>
     {
         // Original-orientation neighbour lookups, sorted later per pass.
         const upper = new Map<string, string[]>();

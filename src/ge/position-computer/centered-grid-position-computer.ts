@@ -1,5 +1,7 @@
 import { Point } from '@pragmatic-lab/mural/runtime';
 import type { AcademicReference } from '../pipeline-element.js';
+import type { Edge } from '../graph.js';
+import type { Size } from '../geometry.js';
 import type { IPositionComputer } from './position-computer.js';
 
 // Maps a finished layer ordering to (x, y) positions. Each layer is
@@ -19,7 +21,7 @@ export class CenteredGridPositionComputer implements IPositionComputer
         public readonly padding:       number = 50,
     ) {}
 
-    public Compute(layers: string[][]): Map<string, Point>
+    public Compute(layers: string[][], _edges?: Edge[], _sizes?: Map<string, Size>): Map<string, Point>
     {
         let maxLayerSize = 0;
         for (const ids of layers)
