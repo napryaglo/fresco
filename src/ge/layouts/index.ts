@@ -2,7 +2,7 @@
 // FlatLayoutPipeline is the orchestrator that composes the strategy
 // stages; the other layouts (Manual / Circular / Grid) are simple
 // alternatives useful for experiments and pinning.
-export { type ILayout }     from './layout.js';
+export { type ILayout, type LayoutResult } from './layout.js';
 export { FlatLayoutPipeline } from './flat-layout-pipeline.js';
 export { ManualLayout }     from './manual-layout.js';
 export { CircularLayout }   from './circular-layout.js';

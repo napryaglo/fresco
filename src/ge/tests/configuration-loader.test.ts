@@ -82,6 +82,6 @@ test('a disabled edge-router produces no routes in Apply', () => {
     const g = new Graph();
     g.AddNode('a'); g.AddNode('b');
     g.AddEdge('a', 'b');
-    layoutPipeline.Apply(g);
-    assert.equal(layoutPipeline.LastRoutes, undefined);
+    const result = layoutPipeline.Apply(g);
+    assert.equal(result.routes, undefined);
 });

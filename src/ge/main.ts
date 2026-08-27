@@ -116,16 +116,17 @@ const config     = GetConfiguration(resolve(here, 'pipeline-configurations.json'
 const { graphPipeline, layoutPipeline } = BuildPipeline(config, repo);
 
 const finalGraph = graphPipeline.Apply(g);
-const positions  = layoutPipeline.Apply(finalGraph);
+const result     = layoutPipeline.Apply(finalGraph);
+const positions  = result.positions;
 
 // The SVG scene draws polylines, so it consumes only `points` routing
 // directives; `sides` directives target a host diagram and have no SVG
 // form here.
 let pointRoutes: Map<Edge, Point[]> | undefined;
-if (layoutPipeline.LastRoutes !== undefined)
+if (result.routes !== undefined)
 {
     pointRoutes = new Map<Edge, Point[]>();
-    for (const [edge, routing] of layoutPipeline.LastRoutes)
+    for (const [edge, routing] of result.routes)
     {
         if (routing.kind === 'points') pointRoutes.set(edge, routing.waypoints);
     }
@@ -142,9 +143,9 @@ const scene = BuildScene(finalGraph, positions, {
 
 // Overlay the configuration name + crossing-count metric in the
 // top-left corner so the SVG is self-contained.
-if (layoutPipeline.LastCrossings !== undefined)
+if (result.crossings !== undefined)
 {
-    const c = layoutPipeline.LastCrossings;
+    const c = result.crossings;
     const description = config.description !== undefined ? ` — ${config.description}` : '';
     const label = new TextBlock(
         `${config.name}${description}    `

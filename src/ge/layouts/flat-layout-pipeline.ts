@@ -14,10 +14,9 @@ import type { ILocalImprover } from '../improver/index.js';
 import { IdentityFirstLayerOrderer, type IFirstLayerOrderer } from '../first-layer-orderer/index.js';
 import type { ILayerImprover } from '../layer-improver/index.js';
 import type { IVerticalAligner } from '../vertical-aligner/index.js';
-import type { EdgeRouting, IEdgeRouter } from '../edge-router/index.js';
+import type { IEdgeRouter } from '../edge-router/index.js';
 import type { IPortAssigner } from '../port-assigner/index.js';
-import type { Edge } from '../graph.js';
-import type { ILayout } from './layout.js';
+import type { ILayout, LayoutResult } from './layout.js';
 
 // Orchestrator for the layered DAG layout pipeline. Composes the
 // strategy stages and runs them in order; holds no layout algorithm
@@ -41,23 +40,6 @@ import type { ILayout } from './layout.js';
 // render the metric onto the SVG or compare between runs.
 export class FlatLayoutPipeline implements ILayout
 {
-    // Populated by Apply on every call. Lets callers read out
-    // before/after crossing counts to render onto the scene or diff
-    // between runs.
-    public LastCrossings?: {
-        adjacentBefore:  number;
-        adjacentAfter:   number;
-        geometricBefore: number;
-        geometricAfter:  number;
-    };
-
-    // Populated by Apply on every call. One routing directive per real
-    // edge — produced by the edge router on top of the (real + dummy)
-    // position map. A `points` directive carries polyline waypoints (the
-    // scene builder draws them); a `sides` directive carries cardinal
-    // sides for a host diagram to route the connector itself.
-    public LastRoutes?: Map<Edge, EdgeRouting>;
-
     constructor(
         public readonly reorderer:           IReorderer = new BarycenterReorderer(),
         public readonly improver?:           ILocalImprover,
@@ -95,7 +77,7 @@ export class FlatLayoutPipeline implements ILayout
         public readonly portAssigner:    IPortAssigner    | undefined = undefined,
     ) {}
 
-    public Apply(graph: Graph): Map<string, Point>
+    public Apply(graph: Graph): LayoutResult
     {
         // Stage 2 — layer assignment.
         let depths = this.layerAssigner.Assign(graph, this.firstLayerNodes);
@@ -191,11 +173,10 @@ export class FlatLayoutPipeline implements ILayout
         const routes = this.edgeRouter !== undefined
             ? this.edgeRouter.Route(positionsAfterAll, chains, ports)
             : undefined;
-        this.LastRoutes = routes;
 
         // Strip dummies from the returned position map — only real
         // nodes get rendered (dummies live on as bend waypoints
-        // inside `LastRoutes` polylines).
+        // inside `routes` polylines).
         const realIds = new Set<string>();
         for (const n of graph.nodes) realIds.add(n.Id);
         const positions = new Map<string, Point>();
@@ -206,15 +187,18 @@ export class FlatLayoutPipeline implements ILayout
 
         const crossingsGeoAfter = this.geometricCounter.Count(positions, graph.edges);
 
-        this.LastCrossings = {
-            adjacentBefore:  crossingsAdjBefore,
-            adjacentAfter:   crossingsAdjAfter,
-            geometricBefore: crossingsGeoBefore,
-            geometricAfter:  crossingsGeoAfter,
-        };
         console.log(`  crossings (adjacent-only): ${crossingsAdjBefore} → ${crossingsAdjAfter}`);
         console.log(`  crossings (geometric):    ${crossingsGeoBefore} → ${crossingsGeoAfter}`);
 
-        return positions;
+        return {
+            positions,
+            routes,
+            crossings: {
+                adjacentBefore:  crossingsAdjBefore,
+                adjacentAfter:   crossingsAdjAfter,
+                geometricBefore: crossingsGeoBefore,
+                geometricAfter:  crossingsGeoAfter,
+            },
+        };
     }
 }

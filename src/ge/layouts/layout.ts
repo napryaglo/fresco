@@ -1,15 +1,37 @@
 import type { Point } from '@pragmatic-lab/mural/runtime';
-import type { Graph } from '../graph.js';
+import type { Graph, Edge } from '../graph.js';
+import type { Rect } from '../geometry.js';
+import type { EdgeRouting } from '../edge-router/index.js';
 
-// A Layout converts graph topology into per-node 2D positions.
-// Returns a map keyed by Node.Id — the scene builder reads positions
-// from this map when constructing NodeVisuals and EdgeVisuals.
+// The structured result of a layout run. `positions` is required (one
+// entry per real node); the rest are optional and populated only by the
+// layouts that produce them:
+//   * routes  — one routing directive per real edge (was the flat
+//               pipeline's `LastRoutes` side-channel).
+//   * boxes   — one rectangle per container (compound layouts only).
+//   * crossings — before/after crossing diagnostics (was `LastCrossings`).
+export interface LayoutResult
+{
+    positions:  Map<string, Point>;
+    routes?:    Map<Edge, EdgeRouting>;
+    boxes?:     Map<string, Rect>;
+    crossings?: {
+        adjacentBefore:  number;
+        adjacentAfter:   number;
+        geometricBefore: number;
+        geometricAfter:  number;
+    };
+}
+
+// A Layout converts graph topology into a LayoutResult. The scene builder
+// reads `positions` (keyed by Node.Id) when constructing NodeVisuals and
+// EdgeVisuals; `routes`/`boxes` drive edge polylines and container boxes.
 //
-// Layouts are pure: same Graph in, same positions out. Stateful
+// Layouts are pure: same Graph in, same LayoutResult out. Stateful
 // algorithms (force-directed simulation, layered DAG flow) can still
 // implement this by running the simulation in Apply and returning the
-// final positions.
+// final result.
 export interface ILayout
 {
-    Apply(graph: Graph): Map<string, Point>;
+    Apply(graph: Graph): LayoutResult;
 }

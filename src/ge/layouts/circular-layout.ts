@@ -1,6 +1,6 @@
 import { Point } from '@pragmatic-lab/mural/runtime';
 import type { Graph } from '../graph.js';
-import type { ILayout } from './layout.js';
+import type { ILayout, LayoutResult } from './layout.js';
 
 // Evenly-spaced points on a circle. First node goes to the top
 // (12 o'clock) and the rest run clockwise. `center` is the center of
@@ -13,11 +13,11 @@ export class CircularLayout implements ILayout
         public readonly radius: number,
     ) {}
 
-    public Apply(graph: Graph): Map<string, Point>
+    public Apply(graph: Graph): LayoutResult
     {
         const out = new Map<string, Point>();
         const n = graph.nodes.length;
-        if (n === 0) return out;
+        if (n === 0) return { positions: out };
         for (let i = 0; i < n; i++)
         {
             const angle = (i / n) * Math.PI * 2 - Math.PI / 2;
@@ -25,6 +25,6 @@ export class CircularLayout implements ILayout
             const y = this.center.Y + this.radius * Math.sin(angle);
             out.set(graph.nodes[i]!.Id, new Point(x, y));
         }
-        return out;
+        return { positions: out };
     }
 }

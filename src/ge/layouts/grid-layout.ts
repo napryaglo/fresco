@@ -1,6 +1,6 @@
 import { Point } from '@pragmatic-lab/mural/runtime';
 import type { Graph } from '../graph.js';
-import type { ILayout } from './layout.js';
+import type { ILayout, LayoutResult } from './layout.js';
 
 // Rectangular grid, left-to-right then top-to-bottom. `origin` is the
 // position of the first node (row 0, column 0); subsequent nodes are
@@ -14,7 +14,7 @@ export class GridLayout implements ILayout
         public readonly origin: Point = new Point(0, 0),
     ) {}
 
-    public Apply(graph: Graph): Map<string, Point>
+    public Apply(graph: Graph): LayoutResult
     {
         const out = new Map<string, Point>();
         for (let i = 0; i < graph.nodes.length; i++)
@@ -26,6 +26,6 @@ export class GridLayout implements ILayout
                 this.origin.Y + row * this.spacingY,
             ));
         }
-        return out;
+        return { positions: out };
     }
 }
