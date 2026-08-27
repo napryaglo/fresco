@@ -46,13 +46,26 @@ export class NestedCompoundLayout implements ILayout
         const rank = globalRank(graph);
 
         // --- Pass 1: size bottom-up (deepest containers first) ---
+        // A frozen container (LayoutContent === false) halts recursion: its
+        // whole subtree is sized from the manual LocalPositions, and its
+        // descendant containers are NOT laid out independently.
+        const frozen = (id: string): boolean =>
+            graph.nodes.find(n => n.Id === id)?.LayoutContent === false;
+        const insideFrozen = (id: string): boolean => ancestors(graph, id).some(frozen);
+
         const containers = graph.nodes
-            .filter(n => isContainer(graph, n.Id))
+            .filter(n => isContainer(graph, n.Id) && !insideFrozen(n.Id))
             .map(n => n.Id)
             .sort((a, b) => this.depth(graph, b) - this.depth(graph, a) || a.localeCompare(b));
 
         for (const c of containers)
         {
+            if (frozen(c))
+            {
+                this.freezeSubtree(graph, c, boxSize, localPos);
+                portMeta.set(c, []); // frozen interiors mint no ports (smoke scope)
+                continue;
+            }
             const local = this.buildLocalGraph(graph, c, boxSize, rank, portMeta);
             const res = this.engine.Apply(local);
             localPos.set(c, res.positions);
@@ -206,6 +219,44 @@ export class NestedCompoundLayout implements ILayout
             cur = parent;
         }
         return undefined;
+    }
+
+    // Size a frozen container and every container nested within it from the
+    // manual LocalPositions, bottom-up. Populates boxSize and localPos for
+    // the whole subtree so the normal top-down unfold (a rigid translation)
+    // then preserves the manual relative layout exactly. A container's box is
+    // its explicit Size when set, else the padded extent of its children.
+    private freezeSubtree(
+        graph:    Graph,
+        root:     string,
+        boxSize:  Map<string, Size>,
+        localPos: Map<string, Map<string, Point>>,
+    ): void
+    {
+        const inSubtree = (id: string): boolean =>
+            id === root || ancestors(graph, id).includes(root);
+        const subContainers = graph.nodes
+            .filter(n => inSubtree(n.Id) && isContainer(graph, n.Id))
+            .map(n => n.Id)
+            .sort((a, b) => this.depth(graph, b) - this.depth(graph, a) || a.localeCompare(b));
+
+        for (const d of subContainers)
+        {
+            const kids = childrenOf(graph, d);
+            const pos = new Map<string, Point>();
+            for (const k of kids) pos.set(k.Id, k.LocalPosition ?? new Point(0, 0));
+            localPos.set(d, pos);
+
+            const dNode = graph.nodes.find(n => n.Id === d)!;
+            const bb = boundingBox(kids.map(k =>
+            {
+                const p = k.LocalPosition ?? new Point(0, 0);
+                const s = boxSize.get(k.Id) ?? k.Size ?? { width: 0, height: 0 };
+                return { x: p.X, y: p.Y, w: s.width, h: s.height };
+            }));
+            boxSize.set(d, dNode.Size ??
+                { width: bb.width + 2 * this.padding, height: bb.height + 2 * this.padding });
+        }
     }
 
     // Box size for a container = the extent of its laid-out interior plus the
