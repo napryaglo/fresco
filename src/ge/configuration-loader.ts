@@ -23,7 +23,7 @@ import {
     GreedySwitchImprover,
     IdentityFirstLayerOrderer,
     IlpExactImprover,
-    LayoutPipeline,
+    FlatLayoutPipeline,
     LongestPathLayerAssigner,
     MakeAcyclicTransform,
     MapLabelsTransform,
@@ -378,7 +378,7 @@ function isOff(value: unknown): value is OffSpec
 // resolver can't: an explicit { off: true } → skip; an absent value → the
 // stage's default (via defaultFactory, or skip when none); otherwise build
 // the named strategy. This is where "off" actually reaches the pipeline as
-// undefined — the LayoutPipeline constructor no longer defaults these
+// undefined — the FlatLayoutPipeline constructor no longer defaults these
 // stages, so undefined genuinely skips them.
 function optionalStage<T extends IPipelineElement>(
     registry:        Record<string, () => T>,
@@ -394,7 +394,7 @@ function optionalStage<T extends IPipelineElement>(
     return resolveStage(registry, repo, stage, value, ext);
 }
 
-// Resolves one layout stage value: null/undefined → use LayoutPipeline's
+// Resolves one layout stage value: null/undefined → use FlatLayoutPipeline's
 // default; a class-name string → no-arg construction; a LayoutStageSpec with
 // params → parameterized construction via strategy-params.ts. A className that
 // matches a consumer-supplied extension for this stage is built by the
@@ -474,7 +474,7 @@ export function BuildPipeline(
     extensions?: readonly PipelineElementExtension[],
 ): {
     graphPipeline:  GraphPipeline;
-    layoutPipeline: LayoutPipeline;
+    layoutPipeline: FlatLayoutPipeline;
 }
 {
     // Index consumer-supplied elements by `${stage}:${className}` so
@@ -490,7 +490,7 @@ export function BuildPipeline(
     }
 
     const L = config.layout;
-    const layoutPipeline = new LayoutPipeline(
+    const layoutPipeline = new FlatLayoutPipeline(
         resolveStage(REORDERERS,             repo, 'reorderer',           L.reorderer,        ext),
         optionalStage(IMPROVERS,             repo, 'improver',            L.improver,         undefined, ext),
         resolveStage(FIRST_LAYER_ORDERERS,   repo, 'first-layer-orderer', L.firstLayerOrderer, ext),

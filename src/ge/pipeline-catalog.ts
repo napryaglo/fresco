@@ -54,7 +54,7 @@ const SLOT_ORDER: readonly string[] = [
     'port-assigner',
 ];
 
-// Slots LayoutPipeline has no meaningful "off" for — the builder must
+// Slots FlatLayoutPipeline has no meaningful "off" for — the builder must
 // keep a strategy selected. Everything else is optional (may be null).
 const REQUIRED_SLOTS = new Set<string>([
     'layer-assigner',

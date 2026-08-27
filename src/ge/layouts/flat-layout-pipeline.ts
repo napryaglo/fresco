@@ -39,7 +39,7 @@ import type { ILayout } from './layout.js';
 // The two crossing counters (geometric + adjacent) are used for
 // diagnostics only — they populate LastCrossings so callers can
 // render the metric onto the SVG or compare between runs.
-export class LayoutPipeline implements ILayout
+export class FlatLayoutPipeline implements ILayout
 {
     // Populated by Apply on every call. Lets callers read out
     // before/after crossing counts to render onto the scene or diff
