@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { Point } from '@pragmatic-lab/mural/runtime';
+import { Point } from '@pragmatic-tech-ai/mural/runtime';
 import { Node } from '../graph.js';
 
 test('a fresh node has no parent, no size, no local position, and lays out its content', () => {

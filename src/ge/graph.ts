@@ -1,5 +1,5 @@
-import { MetaData, MuralBase } from '@pragmatic-lab/mural/runtime';
-import type { Point } from '@pragmatic-lab/mural/runtime';
+import { MetaData, MuralBase } from '@pragmatic-tech-ai/mural/runtime';
+import type { Point } from '@pragmatic-tech-ai/mural/runtime';
 import type { Size } from './geometry.js';
 
 // Plain-data graph model. Node and Edge are MuralBase descendants so they

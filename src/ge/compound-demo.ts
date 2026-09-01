@@ -1,9 +1,9 @@
 import { writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
-import { Color, Point } from '@pragmatic-lab/mural/runtime';
-import { HeadlessTarget, SolidColorBrush, SvgDrawingContext } from '@pragmatic-lab/mural/visual-engine';
-import { Canvas, TextBlock } from '@pragmatic-lab/mural/basic';
+import { Color, Point } from '@pragmatic-tech-ai/mural/runtime';
+import { HeadlessTarget, SolidColorBrush, SvgDrawingContext } from '@pragmatic-tech-ai/mural/visual-engine';
+import { Canvas, TextBlock } from '@pragmatic-tech-ai/mural/basic';
 
 import { Graph } from './graph.js';
 import { NestedCompoundLayout } from './compound/nested-compound-layout.js';

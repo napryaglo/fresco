@@ -1,5 +1,5 @@
 {
-  "name": "@pragmatic-lab/fresco",
+  "name": "@pragmatic-tech-ai/fresco",
   "version": "0.4.1",
   "description": "Graph visualization library built on top of mural",
   "type": "module",
@@ -38,7 +38,7 @@
     "typescript": "^5.7.0"
   },
   "dependencies": {
-    "@pragmatic-lab/mural": "^0.19.1",
+    "@pragmatic-tech-ai/mural": "^0.45.0",
     "yaml": "^2.9.0"
   }
 }

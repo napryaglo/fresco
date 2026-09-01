@@ -1,4 +1,4 @@
-import { Point } from '@pragmatic-lab/mural/runtime';
+import { Point } from '@pragmatic-tech-ai/mural/runtime';
 import type { Graph } from '../graph.js';
 import type { ILayout, LayoutResult } from './layout.js';
 

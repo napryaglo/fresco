@@ -1,4 +1,4 @@
-import type { Point } from '@pragmatic-lab/mural/runtime';
+import type { Point } from '@pragmatic-tech-ai/mural/runtime';
 import type { Edge } from '../graph.js';
 import type { Size } from '../geometry.js';
 import type { IPipelineElement } from '../pipeline-element.js';

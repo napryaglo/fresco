@@ -386,7 +386,7 @@ Validates *quality* on real architecture models without coupling TODL or
 Plexus into Fresco's test runtime. Generation and consumption are split:
 
 - **Offline generator** — the *only* component that depends on
-  `@pragmatic-lab/todl`. Compiles each `plexus_tests` project
+  `@pragmatic-tech-ai/todl`. Compiles each `plexus_tests` project
   (`test_architecture`, `test_hubspoke_project`, `test_waf_project`) —
   `landscape.todl` + `scenarios.todl` — into a static **Fresco-Graph JSON**:
   nodes with `ParentId`/`Size`, edges, one edge-set per scenario. One fixture

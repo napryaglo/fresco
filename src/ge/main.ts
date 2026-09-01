@@ -2,13 +2,13 @@ import { writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { Color, type Point } from '@pragmatic-lab/mural/runtime';
+import { Color, type Point } from '@pragmatic-tech-ai/mural/runtime';
 import {
     HeadlessTarget,
     SolidColorBrush,
     SvgDrawingContext,
-} from '@pragmatic-lab/mural/visual-engine';
-import { Canvas, TextBlock } from '@pragmatic-lab/mural/basic';
+} from '@pragmatic-tech-ai/mural/visual-engine';
+import { Canvas, TextBlock } from '@pragmatic-tech-ai/mural/basic';
 import {
     BuildPipeline,
     BuildScene,

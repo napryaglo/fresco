@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { Point } from '@pragmatic-lab/mural/runtime';
+import { Point } from '@pragmatic-tech-ai/mural/runtime';
 import { Graph } from '../../graph.js';
 import { NestedCompoundLayout } from '../nested-compound-layout.js';
 import { BuildPipeline, LoadElementRepository, type PipelineConfiguration } from '../../configuration-loader.js';

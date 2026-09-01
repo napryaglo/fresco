@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-Fresco — `@pragmatic-lab/fresco`, the layout/graph-engine package (consumed by
+Fresco — `@pragmatic-tech-ai/fresco`, the layout/graph-engine package (consumed by
 Plexus for the diagram layout pipeline). ESM; tests via
 `tsx --test "src/**/*.test.ts"`.
 

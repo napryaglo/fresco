@@ -1,4 +1,4 @@
-import { Point } from '@pragmatic-lab/mural/runtime';
+import { Point } from '@pragmatic-tech-ai/mural/runtime';
 
 // Small value types shared by the layout stages and the compound
 // composer. Fresco imports only `Point` from mural/runtime; `Size` and

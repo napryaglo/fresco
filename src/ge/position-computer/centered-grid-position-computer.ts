@@ -1,4 +1,4 @@
-import { Point } from '@pragmatic-lab/mural/runtime';
+import { Point } from '@pragmatic-tech-ai/mural/runtime';
 import type { AcademicReference } from '../pipeline-element.js';
 import type { Edge } from '../graph.js';
 import type { Size } from '../geometry.js';

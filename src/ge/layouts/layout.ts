@@ -1,4 +1,4 @@
-import type { Point } from '@pragmatic-lab/mural/runtime';
+import type { Point } from '@pragmatic-tech-ai/mural/runtime';
 import type { Graph, Edge } from '../graph.js';
 import type { Rect } from '../geometry.js';
 import type { EdgeRouting } from '../edge-router/index.js';

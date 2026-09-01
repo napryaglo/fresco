@@ -6,13 +6,13 @@
 
 **Architecture:** Each container's interior is laid out in isolation by the existing flat pipeline; cross-boundary edges reduce to *ports* on container borders. A bottom-up pass sizes each container into a box; a top-down pass unfolds boxes by pure translation. A cheap global "orientation" rank decides port sides. Containers may be frozen (`LayoutContent = false`) so pre-placed content is preserved.
 
-**Tech Stack:** TypeScript (ESM, `.js` import specifiers), `@pragmatic-lab/mural/runtime` (`Point`, `MuralBase`), test runner `tsx --test` with `node:test` + `node:assert/strict`.
+**Tech Stack:** TypeScript (ESM, `.js` import specifiers), `@pragmatic-tech-ai/mural/runtime` (`Point`, `MuralBase`), test runner `tsx --test` with `node:test` + `node:assert/strict`.
 
 **Spec:** `docs/superpowers/specs/2026-08-27-compound-layout-design.md` — read it alongside this plan; the plan argues from it.
 
 ## Global Constraints
 
-- **No new runtime dependencies.** Only `@pragmatic-lab/mural` and `yaml` are allowed (see `package.json`). The TODL-based corpus generator is a *separate follow-up plan* and is NOT part of this one.
+- **No new runtime dependencies.** Only `@pragmatic-tech-ai/mural` and `yaml` are allowed (see `package.json`). The TODL-based corpus generator is a *separate follow-up plan* and is NOT part of this one.
 - **ESM imports** always use `.js` extensions (e.g. `from '../graph.js'`), even for `.ts` sources.
 - **Enums over string-literal unions** — `PortSide` is a real `enum`, never a `'top' | 'bottom'` union.
 - **Tests live in a `tests/` subfolder** next to the source they exercise (e.g. `src/ge/compound/tests/…`).
@@ -122,7 +122,7 @@ test('boundingBox accounts for item width/height (centered extents)', () => {
 - [ ] **Step 3: Implement.**
 ```ts
 // src/ge/geometry.ts
-import { Point } from '@pragmatic-lab/mural/runtime';
+import { Point } from '@pragmatic-tech-ai/mural/runtime';
 
 export interface Size { width: number; height: number }
 export interface Rect { position: Point; width: number; height: number }
@@ -204,7 +204,7 @@ test('FlatLayoutPipeline.Apply returns a LayoutResult with positions', () => {
 
 - [ ] **Step 3: Define `LayoutResult` and update `ILayout`.** In `src/ge/layouts/layout.ts`, import `Edge` from `../graph.js`, `Rect` from `../geometry.js`, `EdgeRouting` from `../edge-router/index.js`, and replace the interface:
 ```ts
-import type { Point } from '@pragmatic-lab/mural/runtime';
+import type { Point } from '@pragmatic-tech-ai/mural/runtime';
 import type { Graph, Edge } from '../graph.js';
 import type { Rect } from '../geometry.js';
 import type { EdgeRouting } from '../edge-router/index.js';
@@ -387,7 +387,7 @@ git commit -m "feat: Brandes-Kopf honors per-node width and per-layer height"
 // src/ge/tests/graph-hierarchy.test.ts
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { Point } from '@pragmatic-lab/mural/runtime';
+import { Point } from '@pragmatic-tech-ai/mural/runtime';
 import { Node } from '../graph.js';
 
 test('a fresh node has no parent, no size, no local position, and lays out its content', () => {
@@ -415,7 +415,7 @@ test('hierarchy fields round-trip', () => {
 
 - [ ] **Step 3: Implement.** In `src/ge/graph.ts`, import `Point` and `Size`:
 ```ts
-import type { Point } from '@pragmatic-lab/mural/runtime';
+import type { Point } from '@pragmatic-tech-ai/mural/runtime';
 import type { Size } from './geometry.js';
 ```
 Add to `class Node`, following the existing key/getter/setter pattern:
@@ -741,7 +741,7 @@ test('a container-free graph lays out exactly like the flat pipeline', () => {
 - [ ] **Step 3: Implement the skeleton.**
 ```ts
 // src/ge/compound/nested-compound-layout.ts
-import type { Point } from '@pragmatic-lab/mural/runtime';
+import type { Point } from '@pragmatic-tech-ai/mural/runtime';
 import type { Graph } from '../graph.js';
 import type { ILayout, LayoutResult } from '../layouts/layout.js';
 import type { FlatLayoutPipeline } from '../layouts/flat-layout-pipeline.js';
@@ -836,7 +836,7 @@ test('one container with two children: children sit inside the box', () => {
 ```ts
 import { boundingBox } from '../geometry.js';
 import { Node } from '../graph.js';
-import { Point } from '@pragmatic-lab/mural/runtime';
+import { Point } from '@pragmatic-tech-ai/mural/runtime';
 
 private readonly padding = 40;
 
@@ -1253,7 +1253,7 @@ git commit -m "feat: sideways sibling crossings via side ports"
 // src/ge/compound/tests/nested-frozen.test.ts
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { Point } from '@pragmatic-lab/mural/runtime';
+import { Point } from '@pragmatic-tech-ai/mural/runtime';
 import { Graph } from '../../graph.js';
 import { NestedCompoundLayout } from '../nested-compound-layout.js';
 import { BuildPipeline, LoadElementRepository, type PipelineConfiguration } from '../../configuration-loader.js';
@@ -1320,7 +1320,7 @@ git commit -m "feat: frozen containers (LayoutContent=false) preserve interior p
 // src/ge/compound/tests/nested-frozen-size.test.ts
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { Point } from '@pragmatic-lab/mural/runtime';
+import { Point } from '@pragmatic-tech-ai/mural/runtime';
 import { Graph } from '../../graph.js';
 import { NestedCompoundLayout } from '../nested-compound-layout.js';
 import { BuildPipeline, LoadElementRepository, type PipelineConfiguration } from '../../configuration-loader.js';
